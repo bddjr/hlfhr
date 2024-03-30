@@ -35,7 +35,6 @@ func main() {
 	// Then just use it like &http.Server .
 
 	err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
-	// 
 	if err != nil && err != http.ErrServerClosed {
 		fmt.Println(err)
 	}
