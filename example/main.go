@@ -19,6 +19,7 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       10 * time.Second,
 	})
+	// Then just use it like &http.Server .
 
 	testPrint(srv)
 
