@@ -30,17 +30,17 @@ type Server struct {
 	hlfhr_shuttingDown bool
 }
 
-// New hlfhr Server, example:
-//
-//	hlfhr.New(&http.Server{
-//		Addr:              ":5678",
-//		Handler:           http.HandlerFunc(httpResponseHandle),
-//		ReadHeaderTimeout: 10 * time.Second,
-//	})
+// New hlfhr Server
 func New(srv *http.Server) *Server {
+	return NewServer(srv)
+}
+
+// New hlfhr Server
+func NewServer(srv *http.Server) *Server {
 	return &Server{
-		Server:                         srv,
-		Hflhr_ReadFirstRequestBytesLen: 4096,
+		Server:                            srv,
+		Hflhr_ReadFirstRequestBytesLen:    4096,
+		Hflhr_HttpOnHttpsPortErrorHandler: nil,
 	}
 }
 
@@ -72,7 +72,7 @@ func (srv *Server) ListenAndServeTLS(certFile string, keyFile string) error {
 	if err != nil {
 		return err
 	}
-	ln = newListener(ln, srv)
+	ln = NewListener(ln, srv)
 
 	defer ln.Close()
 
@@ -106,7 +106,7 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 // ServeTLS always returns a non-nil error. After Shutdown or Close, the
 // returned error is ErrServerClosed.
 func (srv *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
-	l = newListener(l, srv)
+	l = NewListener(l, srv)
 	return srv.Server.ServeTLS(l, certFile, keyFile)
 }
 

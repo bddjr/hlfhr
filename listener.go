@@ -11,29 +11,34 @@ import (
 	"net"
 )
 
-type listener struct {
+type Listener struct {
 	net.Listener
 
 	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
 	hlfhr_httpOnHttpsPortErrorHandler *func(b []byte, conn net.Conn)
 
-	// Default 4096
+	// Default 4096 Bytes
 	hflhr_readFirstRequestBytesLen int
 }
 
-func newListener(inner net.Listener, srv *Server) net.Listener {
-	l := &listener{
-		Listener:                          inner,
-		hlfhr_httpOnHttpsPortErrorHandler: &srv.Hflhr_HttpOnHttpsPortErrorHandler,
-		hflhr_readFirstRequestBytesLen:    srv.Hflhr_ReadFirstRequestBytesLen,
+func NewListener(inner net.Listener, srv *Server) net.Listener {
+	var l *Listener
+	if innerThisListener, ok := inner.(*Listener); ok {
+		l = innerThisListener
+	} else {
+		l = &Listener{
+			Listener: inner,
+		}
 	}
+	l.hlfhr_httpOnHttpsPortErrorHandler = &srv.Hflhr_HttpOnHttpsPortErrorHandler
+	l.hflhr_readFirstRequestBytesLen = srv.Hflhr_ReadFirstRequestBytesLen
 	if l.hflhr_readFirstRequestBytesLen == 0 {
 		l.hflhr_readFirstRequestBytesLen = 4096
 	}
 	return l
 }
 
-func (l *listener) Accept() (net.Conn, error) {
+func (l *Listener) Accept() (net.Conn, error) {
 	c, err := l.Listener.Accept()
 	if err != nil {
 		return nil, err
@@ -56,8 +61,8 @@ type conn struct {
 	firstReadBytesForRedirect []byte
 }
 
-func newConn(inner net.Conn, l *listener) net.Conn {
-	return &conn{
+func newConn(inner net.Conn, l *Listener) net.Conn {
+	c := &conn{
 		Conn:                              inner,
 		hlfhr_HttpOnHttpsPortErrorHandler: l.hlfhr_httpOnHttpsPortErrorHandler,
 		hflhr_readFirstRequestBytesLen:    l.hflhr_readFirstRequestBytesLen,
@@ -65,6 +70,10 @@ func newConn(inner net.Conn, l *listener) net.Conn {
 		isNotFirstRead:                    false,
 		firstReadBytesForRedirect:         nil,
 	}
+	if c.hflhr_readFirstRequestBytesLen == 0 {
+		c.hflhr_readFirstRequestBytesLen = 4096
+	}
+	return c
 }
 
 func (c *conn) Read(b []byte) (n int, err error) {
