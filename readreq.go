@@ -14,24 +14,20 @@ import (
 
 var compiledRegexp_tlsRecordHeaderLooksLikeHTTP = regexp.MustCompile(`^(GET /|HEAD |POST |PUT /|OPTIO)`)
 
-var compiledRegexp_ReqPath = regexp.MustCompile(`/\S*`)
-var compiledRegexp_ReqHost = regexp.MustCompile(`\r\nHost: \S+\r`)
+// "GET /index.html HTTP/1.1\r\nHost: localhost:5678\r\nUser-Agent: curl/8.7.1\r\nAccept: */*\r\n\r\n"
+//
+// ["GET /index.html HTTP/1.1\r\nHost: localhost:5678\r" "/index.html" "localhost:5678"]
+var compiledRegexp_ReadReq = regexp.MustCompile(`^[A-Z]{3,7} (/\S*) HTTP/1.1\r\nHost: (\S+)\r`)
 
 // Parse the request Host header and path from Hflhr_HttpOnHttpsPortErrorHandler.
 // Suppose this request using HTTP/1.1
 func ReadReqHostPath(b []byte) (host string, path string, ok bool) {
-	pb := compiledRegexp_ReqPath.Find(b)
-	if pb == nil {
+	fb := compiledRegexp_ReadReq.FindSubmatch(b)
+	if fb == nil {
 		return
 	}
-	path = string(pb)
-
-	hb := compiledRegexp_ReqHost.Find(b)
-	if hb == nil {
-		return
-	}
-	host = string(hb[len("\r\nHost: ") : len(hb)-len("\r")])
-
+	path = string(fb[1])
+	host = string(fb[2])
 	ok = true
 	return
 }
