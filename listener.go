@@ -130,7 +130,7 @@ func (c *conn) Read(b []byte) (n int, err error) {
 	}
 	rbAll = rbAll[:rbAlln]
 
-	n = copy(b[rb5n:], rbAll)
+	n = copy(b[rb5n:], rbAll[rb5n:])
 	n += rb5n
 	// Cache for redirect
 	c.firstReadBytesForRedirect = rbAll
