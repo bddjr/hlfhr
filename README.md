@@ -14,7 +14,7 @@ Related Issue:
 ***
 ## Get
 ```
-go get -u github.com/bddjr/hlfhr
+go get github.com/bddjr/hlfhr
 ```
 
 ***
