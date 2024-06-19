@@ -82,12 +82,7 @@ srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
 		return
 	}
 	// script
-	resp.StatusCode = 400
-	resp.SetContentType("text/html")
-	resp.Write(
-		"<!-- ", hlfhr.ErrHttpOnHttpsPort, " -->\n",
-		"<script> location.protocol = 'https:' </script>\n",
-	)
+	resp.ScriptRedirect()
 }
 ```
 
@@ -142,6 +137,12 @@ Response.Redirect
 ```go
 var resp *hlfhr.Response
 resp.Redirect(302, "https://example.com")
+```
+
+Response.ScriptRedirect
+```go
+var resp *hlfhr.Response
+resp.ScriptRedirect()
 ```
 
 ***

@@ -63,3 +63,12 @@ func (resp Response) Redirect(StatusCode int, Location string) error {
 	resp.Header.Set("Location", Location)
 	return resp.Write()
 }
+
+func (resp Response) ScriptRedirect() error {
+	resp.StatusCode = 400
+	resp.SetContentType("text/html")
+	return resp.Write(
+		"<noscript> ", ErrHttpOnHttpsPort, " </noscript>\n",
+		"<script> location.protocol = 'https:' </script>\n",
+	)
+}

@@ -7,6 +7,7 @@ import (
 	"regexp"
 )
 
+// hlfhr: Client sent an HTTP request to an HTTPS server
 var ErrHttpOnHttpsPort = errors.New("hlfhr: Client sent an HTTP request to an HTTPS server")
 
 var compiledRegexp_tlsRecordHeaderLooksLikeHTTP = regexp.MustCompile(`^(GET /|HEAD |POST |PUT /|OPTIO|DELET|CONNE|TRACE|PATCH)`)
@@ -92,11 +93,6 @@ func (c *conn) Read(b []byte) (n int, err error) {
 		return
 	}
 	// script
-	resp.StatusCode = 400
-	resp.SetContentType("text/html")
-	resp.Write(
-		"<!-- ", ErrHttpOnHttpsPort, " -->\n",
-		"<script> location.protocol = 'https:' </script>\n",
-	)
+	resp.ScriptRedirect()
 	return
 }
