@@ -7,11 +7,9 @@ import (
 	"regexp"
 )
 
-var compiledRegexp_tlsRecordHeaderLooksLikeHTTP = regexp.MustCompile(`^(GET /|HEAD |POST |PUT /|OPTIO|DELET|CONNE|TRACE|PATCH)`)
-
 // "GET /index.html HTTP/1.1\r\nHost: localhost:5678\r\nUser-Agent: curl/8.7.1\r\nAccept: */*\r\n\r\n"
 // ["GET /index.html HTTP/1.1\r\nHost: localhost:5678\r" "/index.html" "localhost:5678"]
-var compiledRegexp_ReadReq = regexp.MustCompile(`^[A-Z]{3,7} (/\S*) HTTP/1.1\r\nHost: (\S+)\r`)
+var compiledRegexp_ReadReq = regexp.MustCompile(`^[A-Z]{3,7} (/\S*) HTTP/1.[01]\r\nHost: (\S+)\r`)
 
 // Parse the request Host header and path from Hlfhr_HttpOnHttpsPortErrorHandler.
 // Suppose this request using HTTP/1.1

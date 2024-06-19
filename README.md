@@ -11,11 +11,26 @@ Adapted from `net/http` .
 Related Issue:  
 [net/http: configurable error message for Client sent an HTTP request to an HTTPS server. #49310](https://github.com/golang/go/issues/49310)  
 
+
 ***
 ## Get
 ```
 go get github.com/bddjr/hlfhr
 ```
+
+
+***
+## Logic
+
+HTTPS Server Start -> Hijacking net.Listener.Accept  
+
+Client HTTPS -> Accept hijacking net.Conn.Read -> Not looks like HTTP -> ✅Continue...  
+
+Client HTTP/1.1 -> Accept hijacking net.Conn.Read -> Looks like HTTP -> 🔄302 Redirect.  
+
+Client HTTP/??? -> Accept hijacking net.Conn.Read -> Looks like HTTP -> Missing Host header -> ❌400 Script.  
+
+[See request](README_curl.md)  
 
 ***
 ## Example
@@ -35,9 +50,7 @@ func main() {
 	// Then just use it like http.Server .
 
 	err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
-	if err != nil && err != http.ErrServerClosed {
-		fmt.Println(err)
-	}
+	fmt.Println(err)
 }
 ```
 
@@ -51,26 +64,6 @@ go build
 ./example
 ```
 
-Request:  
-```curl
-curl -v http://localhost:5678/foo/bar
-*   Trying [::1]:5678...
-* Connected to localhost (::1) port 5678
-> GET /foo/bar HTTP/1.1
-> Host: localhost:5678
-> User-Agent: curl/8.4.0
-> Accept: */*
->
-< HTTP/1.1 302 Found
-< Location: https://localhost:5678/foo/bar
-< Connection: close
-<
-Redirect to HTTPS
-* Closing connection
-```
-
-<br/>
-
 ***
 ## Option Example
 
@@ -82,29 +75,74 @@ srv.Hlfhr_ReadFirstRequestBytesLen = 4096
 Hlfhr_HttpOnHttpsPortErrorHandler
 ```go
 srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
+	resp := hlfhr.NewResponse(conn)
 	// 302 Found
 	if host, path, ok := hlfhr.ReadReqHostPath(rb); ok {
-		fmt.Fprint(conn,
-			"HTTP/1.1 302 Found\r\n",
-			"Location: https://", host, path, "\r\n",
-			"Connection: close\r\n",
-			"\r\n",
-			"Redirect to HTTPS\n",
-		)
+		resp.Redirect(302, fmt.Sprint("https://", host, path))
 		return
 	}
 	// script
-	fmt.Fprint(conn,
-		"HTTP/1.1 400 Bad Request\r\n",
-		"Content-Type: text/html\r\n",
-		"Connection: close\r\n",
-		"\r\n",
+	resp.StatusCode = 400
+	resp.SetContentType("text/html")
+	resp.Write(
+		"<!-- ", hlfhr.ErrHttpOnHttpsPort, " -->\n",
 		"<script> location.protocol = 'https:' </script>\n",
 	)
 }
 ```
 
-<br/>
+
+***
+## Feature Example
+
+New  
+```go
+srv := hlfhr.New(&http.Server{})
+```
+
+NewServer  
+```go
+srv := hlfhr.NewServer(&http.Server{})
+```
+
+ReadReqHostPath
+```go
+var rb []byte
+host, path, ok := hlfhr.ReadReqHostPath(rb)
+```
+
+ReadReq
+```go
+var rb []byte
+req, err := hlfhr.ReadReq(rb)
+```
+
+NewResponse
+```go
+var conn net.Conn
+resp := hlfhr.NewResponse(conn)
+```
+
+Response.SetContentType
+```go
+var resp *hlfhr.Response
+resp.SetContentType("text/html")
+```
+
+Response.Write
+```go
+var resp *hlfhr.Response
+resp.Write(
+	"Hello world!\n",
+	"Hello hlfhr!\n",
+)
+```
+
+Response.Redirect
+```go
+var resp *hlfhr.Response
+resp.Redirect(302, "https://example.com")
+```
 
 ***
 ## License

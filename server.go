@@ -15,14 +15,7 @@ type Server struct {
 	*http.Server
 
 	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
-	//
-	// WriteString use:
-	//   io.WriteString(conn, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nConnection: close\r\n\r\nClient sent an HTTP request to an HTTPS server.\n")
-	// Parse the request Host header and path use:
-	//   host, path, ok := hlfhr.ReadReqHostPath(b)
-	// Parse the request use:
-	//   req, err := hlfhr.ReadReq(b)
-	Hlfhr_HttpOnHttpsPortErrorHandler func(b []byte, conn net.Conn)
+	Hlfhr_HttpOnHttpsPortErrorHandler func(rb []byte, conn net.Conn)
 
 	// Default 4096 Bytes
 	Hlfhr_ReadFirstRequestBytesLen int

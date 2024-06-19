@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 
@@ -11,8 +12,11 @@ import (
 )
 
 var srv *hlfhr.Server
+var rootPath string
 
 func main() {
+	getRootPath()
+
 	srv = hlfhr.New(&http.Server{
 		Addr:              ":5678",
 		Handler:           http.HandlerFunc(httpResponseHandle),
@@ -23,37 +27,23 @@ func main() {
 
 	testPrint(srv)
 
-	err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
-	if err != nil && err != http.ErrServerClosed {
-		fmt.Println(err)
-	}
+	err := srv.ListenAndServeTLS(
+		filepath.Join(rootPath, "localhost.crt"),
+		filepath.Join(rootPath, "localhost.key"),
+	)
+	fmt.Println(err)
 }
 
 func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
-	wh := w.Header()
-	switch r.URL.Path {
-	case "/":
-		w.WriteHeader(200)
-		wh.Set("Content-Type", "text/html")
-		io.WriteString(w, `
-<html><head>
-	<meta name="robots" content="noindex"/>
-	<style>
-		*{ color-scheme: light dark; }
-	</style>
-</head><body>
-	<h1>Hello HTTPS!</h1>
-	<p>hlfhr</p>
-</body></html>
-`,
-		)
-	case "/index", "/index.html":
-		http.Redirect(w, r, "/", 301)
-	default:
-		w.WriteHeader(404)
-		wh.Set("Content-Type", "text/plain")
-		io.WriteString(w, "404 Not Found\n")
+	http.ServeFile(w, r, filepath.Join(rootPath, "web", r.URL.Path))
+}
+
+func getRootPath() {
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
 	}
+	rootPath = filepath.Dir(ex)
 }
 
 func testPrint(srv *hlfhr.Server) {
@@ -61,6 +51,6 @@ func testPrint(srv *hlfhr.Server) {
 	if runtime.GOOS == "windows" {
 		p += "cmd /C "
 	}
-	p = fmt.Sprint(p, "curl -v http://localhost", srv.Addr, "/index.html\n")
+	p = fmt.Sprint(p, "curl -v -k -L http://localhost", srv.Addr, "/\n")
 	fmt.Println(p)
 }
