@@ -50,6 +50,7 @@ func (resp Response) Write(a ...any) error {
 		resp.Body = io.NopCloser(bytes.NewBuffer(b))
 		resp.ContentLength = int64(len(b))
 	} else {
+		resp.Body = nil
 		resp.ContentLength = 0
 	}
 	return resp.Response.Write(resp.writer)
