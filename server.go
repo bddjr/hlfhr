@@ -22,10 +22,10 @@ type Server struct {
 	//   host, path, ok := hlfhr.ReadReqHostPath(b)
 	// Parse the request use:
 	//   req, err := hlfhr.ReadReq(b)
-	Hflhr_HttpOnHttpsPortErrorHandler func(b []byte, conn net.Conn)
+	Hlfhr_HttpOnHttpsPortErrorHandler func(b []byte, conn net.Conn)
 
 	// Default 4096 Bytes
-	Hflhr_ReadFirstRequestBytesLen int
+	Hlfhr_ReadFirstRequestBytesLen int
 
 	hlfhr_shuttingDown bool
 }
@@ -39,8 +39,8 @@ func New(srv *http.Server) *Server {
 func NewServer(srv *http.Server) *Server {
 	return &Server{
 		Server:                            srv,
-		Hflhr_ReadFirstRequestBytesLen:    4096,
-		Hflhr_HttpOnHttpsPortErrorHandler: nil,
+		Hlfhr_ReadFirstRequestBytesLen:    4096,
+		Hlfhr_HttpOnHttpsPortErrorHandler: nil,
 	}
 }
 

@@ -32,7 +32,7 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       10 * time.Second,
 	})
-	// Then just use it like &http.Server .
+	// Then just use it like http.Server .
 
 	err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
 	if err != nil && err != http.ErrServerClosed {
@@ -74,22 +74,33 @@ Redirect to HTTPS
 ***
 ## Option Example
 
-Hflhr_ReadFirstRequestBytesLen
+Hlfhr_ReadFirstRequestBytesLen
 ```go
-srv.Hflhr_ReadFirstRequestBytesLen = 4096
+srv.Hlfhr_ReadFirstRequestBytesLen = 4096
 ```
 
-Hflhr_HttpOnHttpsPortErrorHandler
+Hlfhr_HttpOnHttpsPortErrorHandler
 ```go
-srv.Hflhr_HttpOnHttpsPortErrorHandler = func(b []byte, conn net.Conn) {
-    // 302 Found
-    host, path, ok := hlfhr.ReadReqHostPath(b)
-    if ok {
-        conn.Write([]byte(fmt.Sprint("HTTP/1.1 302 Found\r\nLocation: https://", host, path, "\r\nConnection: close\r\n\r\nRedirect to HTTPS\n")))
-        return
-    }
-    // script
-    conn.Write([]byte("HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n<script> location.protocol = 'https:' </script>\n"))
+srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
+	// 302 Found
+	if host, path, ok := hlfhr.ReadReqHostPath(rb); ok {
+		fmt.Fprint(conn,
+			"HTTP/1.1 302 Found\r\n",
+			"Location: https://", host, path, "\r\n",
+			"Connection: close\r\n",
+			"\r\n",
+			"Redirect to HTTPS\n",
+		)
+		return
+	}
+	// script
+	fmt.Fprint(conn,
+		"HTTP/1.1 400 Bad Request\r\n",
+		"Content-Type: text/html\r\n",
+		"Connection: close\r\n",
+		"\r\n",
+		"<script> location.protocol = 'https:' </script>\n",
+	)
 }
 ```
 

@@ -19,7 +19,7 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       10 * time.Second,
 	})
-	// Then just use it like &http.Server .
+	// Then just use it like http.Server .
 
 	testPrint(srv)
 
@@ -30,11 +30,11 @@ func main() {
 }
 
 func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
-	header := w.Header()
+	wh := w.Header()
 	switch r.URL.Path {
 	case "/":
 		w.WriteHeader(200)
-		header.Set("Content-Type", "text/html")
+		wh.Set("Content-Type", "text/html")
 		io.WriteString(w, `
 <html><head>
 	<meta name="robots" content="noindex"/>
@@ -47,11 +47,13 @@ func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
 </body></html>
 `,
 		)
-		return
+	case "/index", "/index.html":
+		http.Redirect(w, r, "/", 301)
+	default:
+		w.WriteHeader(404)
+		wh.Set("Content-Type", "text/plain")
+		io.WriteString(w, "404 Not Found\n")
 	}
-	w.WriteHeader(404)
-	header.Set("Content-Type", "text/plain")
-	io.WriteString(w, "404 Not Found\n")
 }
 
 func testPrint(srv *hlfhr.Server) {
@@ -59,6 +61,6 @@ func testPrint(srv *hlfhr.Server) {
 	if runtime.GOOS == "windows" {
 		p += "cmd /C "
 	}
-	p = fmt.Sprint(p, "curl -v http://localhost", srv.Addr, "\n")
+	p = fmt.Sprint(p, "curl -v http://localhost", srv.Addr, "/index.html\n")
 	fmt.Println(p)
 }
