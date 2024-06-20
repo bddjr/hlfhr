@@ -20,27 +20,6 @@ go get github.com/bddjr/hlfhr
 
 
 ***
-## Logic
-
-[See request](README_curl.md)  
-
-HTTPS Server Start -> Hijacking net.Listener.Accept  
-
-### Client HTTPS 
-Accept hijacking net.Conn.Read -> Not looks like HTTP -> ✅Continue...  
-
-### Client HTTP/1.1
-Accept hijacking net.Conn.Read -> Looks like HTTP -> HttpOnHttpsPortErrorHandler
-
-If handler nil -> Read Host header and path -> 🔄302 Redirect.  
-
-### Client HTTP/???
-Accept hijacking net.Conn.Read -> Looks like HTTP -> HttpOnHttpsPortErrorHandler
-
-If handler nil -> Missing Host header -> ❌400 ScriptRedirect.  
-
-
-***
 ## Example
 [See example/main.go](example/main.go)  
 
@@ -81,6 +60,27 @@ go build
 ```
 
 [See request](README_curl.md)  
+
+
+***
+## Logic
+
+[See request](README_curl.md)  
+
+HTTPS Server Start -> Hijacking net.Listener.Accept  
+
+### Client HTTPS 
+Accept hijacking net.Conn.Read -> Not looks like HTTP -> ✅Continue...  
+
+### Client HTTP/1.1
+Accept hijacking net.Conn.Read -> Looks like HTTP -> HttpOnHttpsPortErrorHandler
+
+If handler nil -> Read Host header and path -> 🔄302 Redirect.  
+
+### Client HTTP/???
+Accept hijacking net.Conn.Read -> Looks like HTTP -> HttpOnHttpsPortErrorHandler
+
+If handler nil -> Missing Host header -> ❌400 ScriptRedirect.  
 
 
 ***
