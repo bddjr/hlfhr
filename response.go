@@ -11,7 +11,7 @@ import (
 type Response struct {
 	*http.Response
 
-	writer io.Writer
+	InnerWriter io.Writer
 }
 
 func NewResponse(w io.Writer) *Response {
@@ -24,7 +24,7 @@ func NewResponse(w io.Writer) *Response {
 			Close:      true,
 			StatusCode: 400,
 		},
-		writer: w,
+		InnerWriter: w,
 	}
 	resp.Header.Set("Date", time.Now().UTC().Format(http.TimeFormat))
 	resp.Header.Set("X-Redirect-By", "hlfhr")
@@ -53,7 +53,7 @@ func (resp Response) Write(a ...any) error {
 		resp.Body = nil
 		resp.ContentLength = 0
 	}
-	return resp.Response.Write(resp.writer)
+	return resp.Response.Write(resp.InnerWriter)
 }
 
 // Example:
