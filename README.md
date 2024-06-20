@@ -103,10 +103,12 @@ srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
 	resp := hlfhr.NewResponse(conn)
 	if host, path, ok := hlfhr.ReadReqHostPath(rb); ok {
 		// Check Host header
-		hostname, _ := hlfhr.ReadHostnamePort(host)
+		hostname, port := hlfhr.ReadHostnamePort(host)
 		switch hostname {
-		case "localhost", "www.localhost":
+		case "localhost":
 			resp.Redirect(302, fmt.Sprint("https://", host, path))
+		case "www.localhost", "127.0.0.1":
+			resp.Redirect(302, fmt.Sprint("https://localhost:", port, path))
 		default:
 			resp.StatusCode = 421
 			resp.Write()
