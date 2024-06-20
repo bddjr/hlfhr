@@ -22,15 +22,23 @@ go get github.com/bddjr/hlfhr
 ***
 ## Logic
 
+[See request](README_curl.md)  
+
 HTTPS Server Start -> Hijacking net.Listener.Accept  
 
-Client HTTPS -> Accept hijacking net.Conn.Read -> Not looks like HTTP -> ✅Continue...  
+### Client HTTPS 
+Accept hijacking net.Conn.Read -> Not looks like HTTP -> ✅Continue...  
 
-Client HTTP/1.1 -> Accept hijacking net.Conn.Read -> Looks like HTTP -> 🔄302 Redirect.  
+### Client HTTP/1.1
+Accept hijacking net.Conn.Read -> Looks like HTTP -> HttpOnHttpsPortErrorHandler
 
-Client HTTP/??? -> Accept hijacking net.Conn.Read -> Looks like HTTP -> Missing Host header -> ❌400 Script.  
+If handler nil -> Read Host header and path -> 🔄302 Redirect.  
 
-[See request](README_curl.md)  
+### Client HTTP/???
+Accept hijacking net.Conn.Read -> Looks like HTTP -> HttpOnHttpsPortErrorHandler
+
+If handler nil -> Missing Host header -> ❌400 ScriptRedirect.  
+
 
 ***
 ## Example
@@ -78,12 +86,12 @@ go build
 ***
 ## Option Example
 
-Hlfhr_ReadFirstRequestBytesLen
+#### Hlfhr_ReadFirstRequestBytesLen
 ```go
 srv.Hlfhr_ReadFirstRequestBytesLen = 4096
 ```
 
-Hlfhr_HttpOnHttpsPortErrorHandler
+#### Hlfhr_HttpOnHttpsPortErrorHandler
 ```go
 // Default
 srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
@@ -145,48 +153,48 @@ srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {}
 ***
 ## Feature Example
 
-New  
+#### New  
 ```go
 srv := hlfhr.New(&http.Server{})
 ```
 
-NewServer  
+#### NewServer  
 ```go
 srv := hlfhr.NewServer(&http.Server{})
 ```
 
-ReadReqHostPath
+#### ReadReqHostPath
 ```go
 var rb []byte
 host, path, ok := hlfhr.ReadReqHostPath(rb)
 ```
 
-ReadReq
+#### ReadReq
 ```go
 var rb []byte
 req, err := hlfhr.ReadReq(rb)
 ```
 
-ReadHostnamePort
+#### ReadHostnamePort
 ```go
 hostname, port := hlfhr.ReadHostnamePort("localhost:5678")
 // hostname: "localhost"
 // port: "5678"
 ```
 
-NewResponse
+#### NewResponse
 ```go
 var conn net.Conn
 resp := hlfhr.NewResponse(conn)
 ```
 
-Response.SetContentType
+#### Response.SetContentType
 ```go
 var resp *hlfhr.Response
 resp.SetContentType("text/html")
 ```
 
-Response.Write
+#### Response.Write
 ```go
 var resp *hlfhr.Response
 resp.Write(
@@ -195,13 +203,13 @@ resp.Write(
 )
 ```
 
-Response.Redirect
+#### Response.Redirect
 ```go
 var resp *hlfhr.Response
 resp.Redirect(302, "https://example.com")
 ```
 
-Response.ScriptRedirect
+#### Response.ScriptRedirect
 ```go
 var resp *hlfhr.Response
 resp.ScriptRedirect()
