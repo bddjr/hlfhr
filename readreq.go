@@ -11,6 +11,8 @@ import (
 // ["GET /index.html HTTP/1.1\r\nHost: localhost:5678\r" "/index.html" "localhost:5678"]
 var compiledRegexp_ReadReq = regexp.MustCompile(`^[A-Z]{3,7} (/\S*) HTTP/1\.[01]\r\nHost: (\S+)\r`)
 
+var compiledRegexp_ReadHostnamePort = regexp.MustCompile(`^(\S+?)(:(\d{1,5}))?$`)
+
 // Parse the request Host header and path from Hlfhr_HttpOnHttpsPortErrorHandler.
 // Suppose this request using HTTP/1.1
 func ReadReqHostPath(b []byte) (host string, path string, ok bool) {
@@ -27,4 +29,12 @@ func ReadReqHostPath(b []byte) (host string, path string, ok bool) {
 // Parse the request from Hlfhr_HttpOnHttpsPortErrorHandler
 func ReadReq(b []byte) (*http.Request, error) {
 	return http.ReadRequest(bufio.NewReader(bytes.NewBuffer(b)))
+}
+
+func ReadHostnamePort(host string) (hostname string, port string) {
+	s := compiledRegexp_ReadHostnamePort.FindStringSubmatch(host)
+	if s == nil {
+		return
+	}
+	return s[1], s[3]
 }

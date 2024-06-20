@@ -15,7 +15,7 @@ type Server struct {
 	*http.Server
 
 	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
-	Hlfhr_HttpOnHttpsPortErrorHandler func(rb []byte, conn net.Conn)
+	Hlfhr_HttpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler
 
 	// Default 4096 Bytes
 	Hlfhr_ReadFirstRequestBytesLen int
@@ -65,7 +65,7 @@ func (srv *Server) ListenAndServeTLS(certFile string, keyFile string) error {
 	if err != nil {
 		return err
 	}
-	ln = NewListener(ln, srv)
+	ln = NewListener(ln, srv.Hlfhr_ReadFirstRequestBytesLen, srv.Hlfhr_HttpOnHttpsPortErrorHandler)
 
 	defer ln.Close()
 
@@ -99,7 +99,7 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 // ServeTLS always returns a non-nil error. After Shutdown or Close, the
 // returned error is ErrServerClosed.
 func (srv *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
-	l = NewListener(l, srv)
+	l = NewListener(l, srv.Hlfhr_ReadFirstRequestBytesLen, srv.Hlfhr_HttpOnHttpsPortErrorHandler)
 	return srv.Server.ServeTLS(l, certFile, keyFile)
 }
 

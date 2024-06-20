@@ -64,6 +64,17 @@ go build
 ./example
 ```
 
+```
+
+  test:
+  cmd /C curl -v -k -L http://localhost:5678/
+
+2024/06/20 11:50:09 http: TLS handshake error from [::1]:60470: hlfhr: Client sent an HTTP request to an HTTPS server
+```
+
+[See request](README_curl.md)  
+
+
 ***
 ## Option Example
 
@@ -74,6 +85,7 @@ srv.Hlfhr_ReadFirstRequestBytesLen = 4096
 
 Hlfhr_HttpOnHttpsPortErrorHandler
 ```go
+// Default
 srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
 	resp := hlfhr.NewResponse(conn)
 	// 302 Found
@@ -84,6 +96,47 @@ srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
 	// script
 	resp.ScriptRedirect()
 }
+```
+```go
+// Check Host header
+srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
+	resp := hlfhr.NewResponse(conn)
+	if host, path, ok := hlfhr.ReadReqHostPath(rb); ok {
+		// Check Host header
+		hostname, _ := hlfhr.ReadHostnamePort(host)
+		switch hostname {
+		case "localhost", "www.localhost":
+			resp.Redirect(302, fmt.Sprint("https://", host, path))
+		default:
+			resp.StatusCode = 421
+			resp.Write()
+		}
+		return
+	}
+	resp.StatusCode = 400
+	resp.Write()
+}
+```
+```go
+// Custom script only
+srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
+	resp := hlfhr.NewResponse(conn)
+	resp.StatusCode = 400
+	resp.SetContentType("text/html")
+	resp.Write(
+		"<script> location.protocol = 'https:' </script>\n",
+	)
+}
+```
+```go
+// Custom script only, not use Response
+srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
+	io.WriteString(conn, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n<script> location.protocol = 'https:' </script>\n")
+}
+```
+```go
+// Close conn
+srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {}
 ```
 
 
@@ -110,6 +163,13 @@ ReadReq
 ```go
 var rb []byte
 req, err := hlfhr.ReadReq(rb)
+```
+
+ReadHostnamePort
+```go
+hostname, port := hlfhr.ReadHostnamePort("localhost:5678")
+// hostname: "localhost"
+// port: "5678"
 ```
 
 NewResponse

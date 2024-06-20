@@ -7,11 +7,11 @@ import (
 type listener struct {
 	net.Listener
 
-	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
-	hlfhr_httpOnHttpsPortErrorHandler func(b []byte, conn net.Conn)
-
 	// Default 4096 Bytes
 	hlfhr_readFirstRequestBytesLen int
+
+	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
+	hlfhr_httpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler
 }
 
 func IsMyListener(inner net.Listener) bool {
@@ -19,18 +19,18 @@ func IsMyListener(inner net.Listener) bool {
 	return ok
 }
 
-func NewListener(inner net.Listener, srv *Server) net.Listener {
+func NewListener(inner net.Listener, readFirstRequestBytesLen int, httpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler) net.Listener {
 	l, ok := inner.(*listener)
 	if !ok {
 		l = &listener{
 			Listener: inner,
 		}
 	}
-	l.hlfhr_httpOnHttpsPortErrorHandler = srv.Hlfhr_HttpOnHttpsPortErrorHandler
-	l.hlfhr_readFirstRequestBytesLen = srv.Hlfhr_ReadFirstRequestBytesLen
+	l.hlfhr_readFirstRequestBytesLen = readFirstRequestBytesLen
 	if l.hlfhr_readFirstRequestBytesLen == 0 {
 		l.hlfhr_readFirstRequestBytesLen = 4096
 	}
+	l.hlfhr_httpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
 	return l
 }
 
@@ -38,7 +38,11 @@ func (l *listener) Accept() (c net.Conn, err error) {
 	c, err = l.Listener.Accept()
 	if err == nil {
 		// Hijacking net.Conn
-		c = newConn(c, l)
+		c = &conn{
+			Conn:                              c,
+			hlfhr_readFirstRequestBytesLen:    l.hlfhr_readFirstRequestBytesLen,
+			hlfhr_httpOnHttpsPortErrorHandler: l.hlfhr_httpOnHttpsPortErrorHandler,
+		}
 	}
 	return
 }
