@@ -172,6 +172,12 @@ srv := hlfhr.New(&http.Server{})
 srv := hlfhr.NewServer(&http.Server{})
 ```
 
+#### Server.Hlfhr_IsShuttingDown
+```go
+var srv *hlfhr.Server
+isShuttingDown := srv.Hlfhr_IsShuttingDown()
+```
+
 #### ReadReqHostPath
 ```go
 var rb []byte
@@ -223,6 +229,33 @@ resp.Redirect(302, "https://example.com")
 var resp *hlfhr.Response
 resp.ScriptRedirect()
 ```
+
+#### NewListener
+```go
+var l net.Listener
+var h HttpOnHttpsPortErrorHandler
+l = hlfhr.NewListener(l, 4096, h)
+```
+
+#### IsMyListener
+```go
+var l net.Listener
+isHlfhrListener := hlfhr.IsMyListener(l)
+```
+
+#### NewConn
+```go
+var c net.Conn
+var h HttpOnHttpsPortErrorHandler
+c = hlfhr.NewConn(c, 4096, h)
+```
+
+#### IsMyConn
+```go
+var c net.Conn
+isHlfhrConn := hlfhr.IsMyConn(c)
+```
+
 
 ***
 ## License
