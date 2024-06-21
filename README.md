@@ -28,9 +28,12 @@ Example:
 var srv *hlfhr.Server
 
 func main() {
+	// Use hlfhr.New
 	srv = hlfhr.New(&http.Server{
-		Addr:              ":5678",
-		Handler:           http.HandlerFunc(httpResponseHandle),
+		Addr: ":5678",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Write something...
+		}),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       10 * time.Second,
 	})
@@ -125,6 +128,12 @@ srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
 	}
 	resp.StatusCode = 400
 	resp.Write()
+}
+```
+```go
+// Script only
+srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
+	hlfhr.NewResponse(conn).ScriptRedirect()
 }
 ```
 ```go

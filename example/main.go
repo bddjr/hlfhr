@@ -17,6 +17,7 @@ var rootPath string
 func main() {
 	getRootPath()
 
+	// Use hlfhr.New
 	srv = hlfhr.New(&http.Server{
 		Addr:              ":5678",
 		Handler:           http.HandlerFunc(httpResponseHandle),
