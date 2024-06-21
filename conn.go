@@ -4,13 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"regexp"
 )
 
 // hlfhr: Client sent an HTTP request to an HTTPS server
 var ErrHttpOnHttpsPort = errors.New("hlfhr: Client sent an HTTP request to an HTTPS server")
-
-var compiledRegexp_tlsRecordHeaderLooksLikeHTTP = regexp.MustCompile(`^(GET /|HEAD |POST |PUT /|OPTIO|DELET|CONNE|TRACE|PATCH)`)
 
 type HttpOnHttpsPortErrorHandler func(rb []byte, conn net.Conn)
 
@@ -51,43 +48,43 @@ func (c *conn) Read(b []byte) (n int, err error) {
 	c.hlfhr_isNotFirstRead = true
 
 	// Default 576 Bytes
-	if len(b) <= 5 {
+	if len(b) <= 1 {
 		// Never run this
 		return c.Conn.Read(b)
 	}
 
-	// Read 5 Bytes Header
-	rb5n := 0
-	rb5 := b[:5]
-	for rb5n < 5 {
-		n, err := c.Conn.Read(rb5[rb5n:])
-		if err != nil {
-			return 0, err
-		}
-		rb5n += n
+	// Read 1 Byte Header
+	_, err = c.Conn.Read(b[:1])
+	if err != nil {
+		return
 	}
 
-	if !compiledRegexp_tlsRecordHeaderLooksLikeHTTP.Match(rb5) {
-		// HTTPS
-		n, err = c.Conn.Read(b[rb5n:])
+	switch b[0] {
+	case 0x16:
+		// Looks like TLS handshake.
+		n, err = c.Conn.Read(b[1:])
 		if err == nil {
-			n += rb5n
+			n += 1
 		}
 		return
+	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
+		// Looks like HTTP.
+	default:
+		return 0, fmt.Errorf("hlfhr: First byte %#02x does not looks like TLS handshake or HTTP request", b[0])
 	}
 
 	// HTTP Read 4096 Bytes Cache for redirect
 	if c.hlfhr_readFirstRequestBytesLen > len(b) {
-		b = append(b, make([]byte, c.hlfhr_readFirstRequestBytesLen-len(b))...)
+		nb := make([]byte, c.hlfhr_readFirstRequestBytesLen)
+		nb[0] = b[0]
+		b = nb
 	}
-	bn, err := c.Conn.Read(b[rb5n:])
+	bn, err := c.Conn.Read(b[1:])
 	if err != nil {
 		return
 	}
 	b = b[:bn]
 
-	// Write and Close
-	defer c.Close()
 	err = ErrHttpOnHttpsPort
 
 	// handler

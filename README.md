@@ -6,7 +6,7 @@
 
 This mod implements a feature by hijacking `net.Conn` :  
 If a user accesses an https port using http, the server returns 302 redirection.  
-Adapted from `net/http` .  
+Adapted from `net/http`  and `crypto/tls` .  
 
 Related Issue:  
 [net/http: configurable error message for Client sent an HTTP request to an HTTPS server. #49310](https://github.com/golang/go/issues/49310)  
@@ -73,18 +73,20 @@ go build
 HTTPS Server Start -> Hijacking net.Listener.Accept  
 
 ### Client HTTPS 
-Accept hijacking net.Conn.Read -> Not looks like HTTP -> ✅Continue...  
+Accept hijacking net.Conn.Read -> First byte 0x16 looks like TLS handshake -> ✅Continue...  
 
 ### Client HTTP/1.1
-Accept hijacking net.Conn.Read -> Looks like HTTP -> HttpOnHttpsPortErrorHandler
+Accept hijacking net.Conn.Read -> First byte looks like HTTP -> HttpOnHttpsPortErrorHandler
 
 If handler nil -> Read Host header and path -> 🔄302 Redirect.  
 
 ### Client HTTP/???
-Accept hijacking net.Conn.Read -> Looks like HTTP -> HttpOnHttpsPortErrorHandler
+Accept hijacking net.Conn.Read -> First byte looks like HTTP -> HttpOnHttpsPortErrorHandler
 
 If handler nil -> Missing Host header -> ❌400 ScriptRedirect.  
 
+### Client ???
+Accept hijacking net.Conn.Read -> First byte does not looks like TLS handshake or HTTP request -> Close.
 
 ***
 ## Option Example
@@ -182,6 +184,12 @@ isShuttingDown := srv.Hlfhr_IsShuttingDown()
 ```go
 var rb []byte
 host, path, ok := hlfhr.ReadReqHostPath(rb)
+```
+
+#### ReadReqMethodHostPath
+```go
+var rb []byte
+method, host, path, ok := hlfhr.ReadReqMethodHostPath(rb)
 ```
 
 #### ReadReq

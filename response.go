@@ -69,7 +69,7 @@ func (resp Response) ScriptRedirect() error {
 	resp.StatusCode = 400
 	resp.SetContentType("text/html")
 	return resp.Write(
-		"<noscript> ", ErrHttpOnHttpsPort, " </noscript>\n",
+		"<noscript> Client sent an HTTP request to an HTTPS server. </noscript>\n",
 		"<script> location.protocol = 'https:' </script>\n",
 	)
 }
