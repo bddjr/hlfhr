@@ -60,17 +60,16 @@ func (c *conn) Read(b []byte) (n int, err error) {
 	}
 
 	switch b[0] {
-	case 0x16:
-		// Looks like TLS handshake.
+	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
+		// Looks like HTTP.
+	default:
+		// Not looks like HTTP.
+		// TLS handshake: 0x16
 		n, err = c.Conn.Read(b[1:])
 		if err == nil {
 			n += 1
 		}
 		return
-	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
-		// Looks like HTTP.
-	default:
-		return 0, fmt.Errorf("hlfhr: First byte %#02x does not looks like TLS handshake or HTTP request", b[0])
 	}
 
 	// HTTP Read 4096 Bytes Cache for redirect

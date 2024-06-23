@@ -73,7 +73,7 @@ go build
 HTTPS Server Start -> Hijacking net.Listener.Accept  
 
 ### Client HTTPS 
-Accept hijacking net.Conn.Read -> First byte 0x16 looks like TLS handshake -> ✅Continue...  
+Accept hijacking net.Conn.Read -> First byte not looks like HTTP -> ✅Continue...  
 
 ### Client HTTP/1.1
 Accept hijacking net.Conn.Read -> First byte looks like HTTP -> HttpOnHttpsPortErrorHandler
