@@ -15,6 +15,7 @@ type Server struct {
 	*http.Server
 
 	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
+	// See https://github.com/bddjr/hlfhr#hlfhr_httponhttpsporterrorhandler
 	Hlfhr_HttpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler
 
 	// Default 4096 Bytes
