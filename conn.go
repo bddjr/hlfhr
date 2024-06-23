@@ -47,11 +47,7 @@ func (c *conn) Read(b []byte) (n int, err error) {
 	}
 	c.hlfhr_isNotFirstRead = true
 
-	// Default 576 Bytes
-	if len(b) <= 1 {
-		// Never run this
-		return c.Conn.Read(b)
-	}
+	// b Default 576 Bytes
 
 	// Read 1 Byte Header
 	_, err = c.Conn.Read(b[:1])
@@ -65,7 +61,9 @@ func (c *conn) Read(b []byte) (n int, err error) {
 	default:
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
-		n, err = c.Conn.Read(b[1:])
+		if len(b) > 1 {
+			n, err = c.Conn.Read(b[1:])
+		}
 		if err == nil {
 			n += 1
 		}
@@ -78,11 +76,17 @@ func (c *conn) Read(b []byte) (n int, err error) {
 		nb[0] = b[0]
 		b = nb
 	}
-	bn, err := c.Conn.Read(b[1:])
-	if err != nil {
-		return
+
+	if c.hlfhr_readFirstRequestBytesLen > 1 {
+		bn, err := c.Conn.Read(b[1:c.hlfhr_readFirstRequestBytesLen])
+		if err != nil {
+			return 0, err
+		}
+		bn += 1
+		b = b[:bn]
+	} else {
+		b = b[:max(c.hlfhr_readFirstRequestBytesLen, 1)]
 	}
-	b = b[:bn]
 
 	err = ErrHttpOnHttpsPort
 
