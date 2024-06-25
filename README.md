@@ -91,8 +91,6 @@ go build
 2024/06/20 11:50:09 http: TLS handshake error from [::1]:60470: hlfhr: Client sent an HTTP request to an HTTPS server
 ```
 
-[See request](README_curl.md)  
-
 
 ***
 ## Logic
@@ -105,17 +103,13 @@ HTTPS Server Start -> Hijacking net.Listener.Accept
 Accept hijacking net.Conn.Read -> First byte not looks like HTTP -> ✅Continue...  
 
 ### Client HTTP/1.1
-Accept hijacking net.Conn.Read -> First byte looks like HTTP -> HttpOnHttpsPortErrorHandler
+Accept hijacking net.Conn.Read -> First byte looks like HTTP -> Read request -> Found Host header -> HttpOnHttpsPortErrorHandler -> Close connect.
 
-If handler nil -> Read Host header and path -> 🔄302 Redirect.  
+If handler nil -> 🔄302 Redirect -> Close connect.  
 
 ### Client HTTP/???
-Accept hijacking net.Conn.Read -> First byte looks like HTTP -> HttpOnHttpsPortErrorHandler
+Accept hijacking net.Conn.Read -> First byte looks like HTTP -> Read request -> Missing Host header -> ❌400 Bad Request -> Close connect.  
 
-If handler nil -> Missing Host header -> ❌400 ScriptRedirect.  
-
-### Client ???
-Accept hijacking net.Conn.Read -> First byte does not looks like TLS handshake or HTTP request -> Close.
 
 ***
 ## Option Example
