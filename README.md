@@ -91,12 +91,7 @@ Accept hijacking net.Conn.Read -> First byte does not looks like TLS handshake o
 ***
 ## Option Example
 
-#### Hlfhr_ReadFirstRequestBytesLen
-```go
-srv.Hlfhr_ReadFirstRequestBytesLen = 4096
-```
-
-#### Hlfhr_HttpOnHttpsPortErrorHandler
+#### HttpOnHttpsPortErrorHandler
 ```go
 // Default
 srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {

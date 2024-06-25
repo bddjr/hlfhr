@@ -15,13 +15,10 @@ type Server struct {
 	*http.Server
 
 	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
-	// See https://github.com/bddjr/hlfhr#hlfhr_httponhttpsporterrorhandler
-	Hlfhr_HttpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler
+	// See https://github.com/bddjr/hlfhr#httponhttpsporterrorhandler
+	HttpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler
 
-	// Default 4096 Bytes
-	Hlfhr_ReadFirstRequestBytesLen int
-
-	hlfhr_shuttingDown bool
+	shuttingDown bool
 }
 
 // New hlfhr Server
@@ -31,11 +28,7 @@ func New(srv *http.Server) *Server {
 
 // New hlfhr Server
 func NewServer(srv *http.Server) *Server {
-	return &Server{
-		Server:                            srv,
-		Hlfhr_ReadFirstRequestBytesLen:    4096,
-		Hlfhr_HttpOnHttpsPortErrorHandler: nil,
-	}
+	return &Server{Server: srv}
 }
 
 // ListenAndServeTLS listens on the TCP network address srv.Addr and
@@ -54,7 +47,7 @@ func NewServer(srv *http.Server) *Server {
 // ListenAndServeTLS always returns a non-nil error. After Shutdown or
 // Close, the returned error is ErrServerClosed.
 func (srv *Server) ListenAndServeTLS(certFile string, keyFile string) error {
-	if srv.hlfhr_shuttingDown {
+	if srv.shuttingDown {
 		return http.ErrServerClosed
 	}
 	addr := srv.Addr
@@ -66,7 +59,7 @@ func (srv *Server) ListenAndServeTLS(certFile string, keyFile string) error {
 	if err != nil {
 		return err
 	}
-	ln = NewListener(ln, srv.Hlfhr_ReadFirstRequestBytesLen, srv.Hlfhr_HttpOnHttpsPortErrorHandler)
+	ln = NewListener(ln, srv.MaxHeaderBytes, srv.HttpOnHttpsPortErrorHandler)
 
 	defer ln.Close()
 
@@ -100,7 +93,7 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 // ServeTLS always returns a non-nil error. After Shutdown or Close, the
 // returned error is ErrServerClosed.
 func (srv *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
-	l = NewListener(l, srv.Hlfhr_ReadFirstRequestBytesLen, srv.Hlfhr_HttpOnHttpsPortErrorHandler)
+	l = NewListener(l, srv.MaxHeaderBytes, srv.HttpOnHttpsPortErrorHandler)
 	return srv.Server.ServeTLS(l, certFile, keyFile)
 }
 
@@ -131,7 +124,7 @@ func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) er
 // Close returns any error returned from closing the Server's
 // underlying Listener(s).
 func (s *Server) Close() error {
-	s.hlfhr_shuttingDown = true
+	s.shuttingDown = true
 	return s.Server.Close()
 }
 
@@ -156,10 +149,10 @@ func (s *Server) Close() error {
 // Once Shutdown has been called on a server, it may not be reused;
 // future calls to methods such as Serve will return ErrServerClosed.
 func (s *Server) Shutdown(ctx context.Context) error {
-	s.hlfhr_shuttingDown = true
+	s.shuttingDown = true
 	return s.Server.Shutdown(ctx)
 }
 
 func (s *Server) Hlfhr_IsShuttingDown() bool {
-	return s.hlfhr_shuttingDown
+	return s.shuttingDown
 }

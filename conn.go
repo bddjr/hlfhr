@@ -1,26 +1,30 @@
 package hlfhr
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 )
 
-// hlfhr: Client sent an HTTP request to an HTTPS server
 var ErrHttpOnHttpsPort = errors.New("hlfhr: Client sent an HTTP request to an HTTPS server")
+var ErrMissingHostHeader = errors.New("hlfhr: Missing Host header")
 
 type HttpOnHttpsPortErrorHandler func(rb []byte, conn net.Conn)
 
 type conn struct {
 	net.Conn
 
-	// Default 4096
-	hlfhr_readFirstRequestBytesLen int
+	// Default http.DefaultMaxHeaderBytes
+	maxHeaderBytes int
 
 	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
-	hlfhr_httpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler
+	httpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler
 
-	hlfhr_isNotFirstRead bool
+	isNotFirstRead      bool
+	isReadingHttpHeader bool
+	byteBuf             byte
 }
 
 func IsMyConn(inner net.Conn) bool {
@@ -28,32 +32,49 @@ func IsMyConn(inner net.Conn) bool {
 	return ok
 }
 
-func NewConn(inner net.Conn, readFirstRequestBytesLen int, httpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler) net.Conn {
+func NewConn(inner net.Conn, maxHeaderBytes int, httpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler) net.Conn {
 	c, ok := inner.(*conn)
 	if !ok {
 		c = &conn{Conn: inner}
 	}
-	c.hlfhr_readFirstRequestBytesLen = readFirstRequestBytesLen
-	if c.hlfhr_readFirstRequestBytesLen == 0 {
-		c.hlfhr_readFirstRequestBytesLen = 4096
+	c.maxHeaderBytes = maxHeaderBytes
+	if c.maxHeaderBytes == 0 {
+		c.maxHeaderBytes = http.DefaultMaxHeaderBytes
 	}
-	c.hlfhr_httpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
+	c.httpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
 	return c
 }
 
 func (c *conn) Read(b []byte) (n int, err error) {
-	if c.hlfhr_isNotFirstRead {
-		return c.Conn.Read(b)
+	if c.isNotFirstRead {
+		if !c.isReadingHttpHeader {
+			return c.Conn.Read(b)
+		}
+		if c.byteBuf > 0 {
+			b[0] = c.byteBuf
+			c.byteBuf = 0
+			return 1, nil
+		}
+		if c.maxHeaderBytes <= 0 {
+			return 0, http.ErrHeaderTooLong
+		}
+		if len(b) > c.maxHeaderBytes {
+			b = b[:c.maxHeaderBytes]
+		}
+		n, err = c.Conn.Read(b)
+		c.maxHeaderBytes -= n
+		return
 	}
-	c.hlfhr_isNotFirstRead = true
+	c.isNotFirstRead = true
 
 	// b Default 576 Bytes
 
 	// Read 1 Byte Header
-	_, err = c.Conn.Read(b[:1])
-	if err != nil {
+	rb1n, err := c.Conn.Read(b[:1])
+	if err != nil || rb1n == 0 {
 		return
 	}
+	c.maxHeaderBytes -= 1
 
 	switch b[0] {
 	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
@@ -61,48 +82,33 @@ func (c *conn) Read(b []byte) (n int, err error) {
 	default:
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
-		if len(b) > 1 {
-			n, err = c.Conn.Read(b[1:])
-		}
-		if err == nil {
-			n += 1
-		}
-		return
+		return rb1n, nil
 	}
 
 	// HTTP Read 4096 Bytes Cache for redirect
-	if c.hlfhr_readFirstRequestBytesLen > len(b) {
-		nb := make([]byte, c.hlfhr_readFirstRequestBytesLen)
-		nb[0] = b[0]
-		b = nb
+	c.byteBuf = b[0]
+	c.isReadingHttpHeader = true
+	req, err := http.ReadRequest(bufio.NewReader(c))
+	c.isReadingHttpHeader = false
+	if err != nil {
+		return 0, fmt.Errorf("hlfhr: %s", err)
 	}
-
-	if c.hlfhr_readFirstRequestBytesLen > 1 {
-		bn, err := c.Conn.Read(b[1:c.hlfhr_readFirstRequestBytesLen])
-		if err != nil {
-			return 0, err
-		}
-		bn += 1
-		b = b[:bn]
-	} else {
-		b = b[:max(c.hlfhr_readFirstRequestBytesLen, 1)]
+	if req.Host == "" {
+		return 0, ErrMissingHostHeader
 	}
 
 	err = ErrHttpOnHttpsPort
 
 	// handler
-	if c.hlfhr_httpOnHttpsPortErrorHandler != nil {
-		c.hlfhr_httpOnHttpsPortErrorHandler(b, c.Conn)
+	if c.httpOnHttpsPortErrorHandler != nil {
+		c.httpOnHttpsPortErrorHandler(b, c.Conn)
 		return
 	}
 
 	resp := NewResponse(c.Conn)
+	resp.Request = req
+
 	// 302 Found
-	if host, path, ok := ReadReqHostPath(b); ok {
-		resp.Redirect(302, fmt.Sprint("https://", host, path))
-		return
-	}
-	// script
-	resp.ScriptRedirect()
+	resp.Redirect(302, "https://"+req.Host+req.URL.RequestURI())
 	return
 }
