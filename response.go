@@ -2,74 +2,55 @@ package hlfhr
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
 )
 
-type Response struct {
-	*http.Response
-
-	InnerWriter io.Writer
-}
-
-func NewResponse(w io.Writer) *Response {
-	resp := &Response{
-		Response: &http.Response{
-			ProtoMajor: 1,
-			ProtoMinor: 1,
-			Proto:      "HTTP/1.1",
-			Header:     make(http.Header),
-			Close:      true,
-			StatusCode: 400,
-		},
-		InnerWriter: w,
+func NewResponse() *http.Response {
+	h := make(http.Header)
+	h.Set("Date", time.Now().UTC().Format(http.TimeFormat))
+	h.Set("X-Powered-By", "github.com/bddjr/hlfhr")
+	return &http.Response{
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		StatusCode: 400,
+		Header:     h,
+		Close:      true,
 	}
-	resp.Header.Set("Date", time.Now().UTC().Format(http.TimeFormat))
-	resp.Header.Set("X-Redirect-By", "hlfhr")
-	return resp
 }
 
-// Example:
-//
-//	resp.SetContentType("text/html")
-func (resp Response) SetContentType(value string) {
-	resp.Header.Set("Content-Type", value)
+type ResponseWriter struct {
+	resp    *http.Response
+	writer  io.Writer
+	bodyBuf *bytes.Buffer
 }
 
-// Example:
-//
-//	resp.Write(
-//	  "Hello world!\n",
-//	  "Hello hlfhr!\n",
-//	)
-func (resp Response) Write(a ...any) error {
-	if len(a) > 0 {
-		b := fmt.Append([]byte{}, a...)
-		resp.Body = io.NopCloser(bytes.NewBuffer(b))
-		resp.ContentLength = int64(len(b))
-	} else {
-		resp.Body = nil
-		resp.ContentLength = 0
+func NewResponseWriter(w io.Writer, resp *http.Response) *ResponseWriter {
+	if resp == nil {
+		resp = NewResponse()
 	}
-	return resp.Response.Write(resp.InnerWriter)
+	return &ResponseWriter{
+		resp:    resp,
+		writer:  w,
+		bodyBuf: bytes.NewBuffer([]byte{}),
+	}
 }
 
-// Example:
-//
-//	resp.Redirect(302, "https://example.com")
-func (resp Response) Redirect(StatusCode int, Location string) error {
-	resp.StatusCode = StatusCode
-	resp.Header.Set("Location", Location)
-	return resp.Write()
+func (rw *ResponseWriter) Header() http.Header {
+	return rw.resp.Header
 }
 
-func (resp Response) ScriptRedirect() error {
-	resp.StatusCode = 400
-	resp.SetContentType("text/html")
-	return resp.Write(
-		"<noscript> Client sent an HTTP request to an HTTPS server. </noscript>\n",
-		"<script> location.protocol = 'https:' </script>\n",
-	)
+func (rw *ResponseWriter) Write(b []byte) (int, error) {
+	return rw.bodyBuf.Write(b)
+}
+
+func (rw *ResponseWriter) WriteHeader(statusCode int) {
+	rw.resp.StatusCode = statusCode
+}
+
+func (rw *ResponseWriter) WriteLock() error {
+	rw.resp.ContentLength = int64(rw.bodyBuf.Len())
+	rw.resp.Body = io.NopCloser(rw.bodyBuf)
+	return rw.resp.Write(rw.writer)
 }

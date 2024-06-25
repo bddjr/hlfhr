@@ -16,67 +16,27 @@ type Server struct {
 
 	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
 	// See https://github.com/bddjr/hlfhr#httponhttpsporterrorhandler
-	HttpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler
+	HttpOnHttpsPortErrorHandler http.Handler
 
 	shuttingDown bool
 }
 
 // New hlfhr Server
-func New(srv *http.Server) *Server {
-	return NewServer(srv)
+func New(s *http.Server) *Server {
+	return &Server{Server: s}
 }
 
 // New hlfhr Server
-func NewServer(srv *http.Server) *Server {
-	return &Server{Server: srv}
+func NewServer(s *http.Server) *Server {
+	return &Server{Server: s}
 }
 
-// ListenAndServeTLS listens on the TCP network address srv.Addr and
-// then calls ServeTLS to handle requests on incoming TLS connections.
-// Accepted connections are configured to enable TCP keep-alives.
-//
-// Filenames containing a certificate and matching private key for the
-// server must be provided if neither the Server's TLSConfig.Certificates
-// nor TLSConfig.GetCertificate are populated. If the certificate is
-// signed by a certificate authority, the certFile should be the
-// concatenation of the server's certificate, any intermediates, and
-// the CA's certificate.
-//
-// If srv.Addr is blank, ":https" is used.
-//
-// ListenAndServeTLS always returns a non-nil error. After Shutdown or
-// Close, the returned error is ErrServerClosed.
-func (srv *Server) ListenAndServeTLS(certFile string, keyFile string) error {
-	if srv.shuttingDown {
-		return http.ErrServerClosed
-	}
-	addr := srv.Addr
-	if addr == "" {
-		addr = ":https"
-	}
-
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return err
-	}
-	ln = NewListener(ln, srv.MaxHeaderBytes, srv.HttpOnHttpsPortErrorHandler)
-
-	defer ln.Close()
-
-	return srv.Server.ServeTLS(ln, certFile, keyFile)
-}
-
-// ListenAndServeTLS acts identically to ListenAndServe, except that it
-// expects HTTPS connections. Additionally, files containing a certificate and
-// matching private key for the server must be provided. If the certificate
-// is signed by a certificate authority, the certFile should be the concatenation
-// of the server's certificate, any intermediates, and the CA's certificate.
-func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) error {
-	srv := New(&http.Server{
-		Addr:    addr,
-		Handler: handler,
-	})
-	return srv.ListenAndServeTLS(certFile, keyFile)
+func (s *Server) NewListener(l net.Listener) net.Listener {
+	return NewListener(
+		l,
+		s.Server,
+		s.HttpOnHttpsPortErrorHandler,
+	)
 }
 
 // ServeTLS accepts incoming connections on the Listener l, creating a
@@ -92,9 +52,9 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 //
 // ServeTLS always returns a non-nil error. After Shutdown or Close, the
 // returned error is ErrServerClosed.
-func (srv *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
-	l = NewListener(l, srv.MaxHeaderBytes, srv.HttpOnHttpsPortErrorHandler)
-	return srv.Server.ServeTLS(l, certFile, keyFile)
+func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
+	l = s.NewListener(l)
+	return s.Server.ServeTLS(l, certFile, keyFile)
 }
 
 // ServeTLS accepts incoming HTTPS connections on the listener l,
@@ -112,6 +72,52 @@ func (srv *Server) ServeTLS(l net.Listener, certFile string, keyFile string) err
 func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) error {
 	srv := New(&http.Server{Handler: handler})
 	return srv.ServeTLS(l, certFile, keyFile)
+}
+
+// ListenAndServeTLS listens on the TCP network address srv.Addr and
+// then calls ServeTLS to handle requests on incoming TLS connections.
+// Accepted connections are configured to enable TCP keep-alives.
+//
+// Filenames containing a certificate and matching private key for the
+// server must be provided if neither the Server's TLSConfig.Certificates
+// nor TLSConfig.GetCertificate are populated. If the certificate is
+// signed by a certificate authority, the certFile should be the
+// concatenation of the server's certificate, any intermediates, and
+// the CA's certificate.
+//
+// If srv.Addr is blank, ":https" is used.
+//
+// ListenAndServeTLS always returns a non-nil error. After Shutdown or
+// Close, the returned error is ErrServerClosed.
+func (s *Server) ListenAndServeTLS(certFile string, keyFile string) error {
+	if s.shuttingDown {
+		return http.ErrServerClosed
+	}
+	addr := s.Addr
+	if addr == "" {
+		addr = ":https"
+	}
+
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	defer l.Close()
+
+	return s.ServeTLS(l, certFile, keyFile)
+}
+
+// ListenAndServeTLS acts identically to ListenAndServe, except that it
+// expects HTTPS connections. Additionally, files containing a certificate and
+// matching private key for the server must be provided. If the certificate
+// is signed by a certificate authority, the certFile should be the concatenation
+// of the server's certificate, any intermediates, and the CA's certificate.
+func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) error {
+	srv := New(&http.Server{
+		Addr:    addr,
+		Handler: handler,
+	})
+	return srv.ListenAndServeTLS(certFile, keyFile)
 }
 
 // Close immediately closes all active net.Listeners and any
@@ -153,6 +159,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.Server.Shutdown(ctx)
 }
 
-func (s *Server) Hlfhr_IsShuttingDown() bool {
+func (s *Server) IsShuttingDown() bool {
 	return s.shuttingDown
 }

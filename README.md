@@ -43,6 +43,35 @@ func main() {
 	fmt.Println(err)
 }
 ```
+```go
+var l net.Listener
+var srv *http.Server
+
+func main() {
+	srv = &http.Server{
+		Addr: ":5678",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Write something...
+		}),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       10 * time.Second,
+	}
+
+	var err error
+	l, err = net.Listen("tcp", srv.Addr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer l.Close()
+
+	// Use hlfhr.NewListener
+	l = hlfhr.NewListener(l, srv, nil)
+
+	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
+	fmt.Println(err)
+}
+```
 
 Run:  
 ```
@@ -94,67 +123,29 @@ Accept hijacking net.Conn.Read -> First byte does not looks like TLS handshake o
 #### HttpOnHttpsPortErrorHandler
 ```go
 // Default
-srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
-	resp := hlfhr.NewResponse(conn)
-	// 302 Found
-	if host, path, ok := hlfhr.ReadReqHostPath(rb); ok {
-		resp.Redirect(302, fmt.Sprint("https://", host, path))
-		return
-	}
-	// script
-	resp.ScriptRedirect()
-}
+srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
+})
 ```
 ```go
 // Check Host header
-srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
-	resp := hlfhr.NewResponse(conn)
-	if host, path, ok := hlfhr.ReadReqHostPath(rb); ok {
-		// Check Host header
-		hostname, port := hlfhr.ReadHostnamePort(host)
-		switch hostname {
-		case "localhost":
-			resp.Redirect(302, fmt.Sprint("https://", host, path))
-		case "www.localhost", "127.0.0.1":
-			resp.Redirect(302, fmt.Sprint("https://localhost:", port, path))
-		default:
-			resp.StatusCode = 421
-			resp.Write()
+srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.URL.Host = r.Host
+	switch r.URL.Hostname() {
+	case "localhost":
+		http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
+	case "www.localhost", "127.0.0.1":
+		s := "https://localhost"
+		if port := r.URL.Port(); port != "" {
+			s += ":" + port
 		}
-		return
+		s += r.URL.RequestURI()
+		http.Redirect(w, r, s, http.StatusFound)
+	default:
+		w.WriteHeader(421)
 	}
-	resp.StatusCode = 400
-	resp.Write()
-}
+})
 ```
-```go
-// Script only
-srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
-	hlfhr.NewResponse(conn).ScriptRedirect()
-}
-```
-```go
-// Custom script only
-srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
-	resp := hlfhr.NewResponse(conn)
-	resp.StatusCode = 400
-	resp.SetContentType("text/html")
-	resp.Write(
-		"<script> location.protocol = 'https:' </script>\n",
-	)
-}
-```
-```go
-// Custom script only, not use Response
-srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {
-	io.WriteString(conn, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n<script> location.protocol = 'https:' </script>\n")
-}
-```
-```go
-// Close conn
-srv.Hlfhr_HttpOnHttpsPortErrorHandler = func(rb []byte, conn net.Conn) {}
-```
-
 
 ***
 ## Feature Example
@@ -169,75 +160,25 @@ srv := hlfhr.New(&http.Server{})
 srv := hlfhr.NewServer(&http.Server{})
 ```
 
-#### Server.Hlfhr_IsShuttingDown
+#### Server.IsShuttingDown
 ```go
 var srv *hlfhr.Server
-isShuttingDown := srv.Hlfhr_IsShuttingDown()
+isShuttingDown := srv.IsShuttingDown()
 ```
 
-#### ReadReqHostPath
+#### Server.NewListener
 ```go
-var rb []byte
-host, path, ok := hlfhr.ReadReqHostPath(rb)
-```
-
-#### ReadReqMethodHostPath
-```go
-var rb []byte
-method, host, path, ok := hlfhr.ReadReqMethodHostPath(rb)
-```
-
-#### ReadReq
-```go
-var rb []byte
-req, err := hlfhr.ReadReq(rb)
-```
-
-#### ReadHostnamePort
-```go
-hostname, port := hlfhr.ReadHostnamePort("localhost:5678")
-// hostname: "localhost"
-// port: "5678"
-```
-
-#### NewResponse
-```go
-var conn net.Conn
-resp := hlfhr.NewResponse(conn)
-```
-
-#### Response.SetContentType
-```go
-var resp *hlfhr.Response
-resp.SetContentType("text/html")
-```
-
-#### Response.Write
-```go
-var resp *hlfhr.Response
-resp.Write(
-	"Hello world!\n",
-	"Hello hlfhr!\n",
-)
-```
-
-#### Response.Redirect
-```go
-var resp *hlfhr.Response
-resp.Redirect(302, "https://example.com")
-```
-
-#### Response.ScriptRedirect
-```go
-var resp *hlfhr.Response
-resp.ScriptRedirect()
+var l net.Listener
+var srv *http.Server
+l = hlfhr.New(srv).NewListener(l)
 ```
 
 #### NewListener
 ```go
 var l net.Listener
-var h HttpOnHttpsPortErrorHandler
-l = hlfhr.NewListener(l, 4096, h)
+var srv *http.Server
+var h http.Handler
+l = hlfhr.NewListener(c, srv, h)
 ```
 
 #### IsMyListener
@@ -249,14 +190,33 @@ isHlfhrListener := hlfhr.IsMyListener(l)
 #### NewConn
 ```go
 var c net.Conn
-var h HttpOnHttpsPortErrorHandler
-c = hlfhr.NewConn(c, 4096, h)
+var srv *http.Server
+var h http.Handler
+c = hlfhr.NewConn(c, srv, h)
 ```
 
 #### IsMyConn
 ```go
 var c net.Conn
 isHlfhrConn := hlfhr.IsMyConn(c)
+```
+
+#### NewResponse
+```go
+resp := hlfhr.NewResponse()
+```
+
+#### NewResponseWriter
+```go
+var c net.Conn
+w := hlfhr.NewResponseWriter(c, nil)
+hw := http.ResponseWriter(w)
+```
+
+#### ResponseWriter.WriteLock
+```go
+var w *hlfhr.ResponseWriter
+w.WriteLock()
 ```
 
 

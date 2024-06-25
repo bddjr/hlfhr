@@ -4,27 +4,26 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"time"
 )
 
 var ErrHttpOnHttpsPort = errors.New("hlfhr: Client sent an HTTP request to an HTTPS server")
 var ErrMissingHostHeader = errors.New("hlfhr: Missing Host header")
 
-type HttpOnHttpsPortErrorHandler func(rb []byte, conn net.Conn)
-
 type conn struct {
 	net.Conn
 
-	// Default http.DefaultMaxHeaderBytes
-	maxHeaderBytes int
+	httpServer                  *http.Server
+	httpOnHttpsPortErrorHandler http.Handler
 
-	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
-	httpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler
+	maxHeaderBytes int
 
 	isNotFirstRead      bool
 	isReadingHttpHeader bool
-	byteBuf             byte
+	httpHeaderByteBuf   byte
 }
 
 func IsMyConn(inner net.Conn) bool {
@@ -32,49 +31,71 @@ func IsMyConn(inner net.Conn) bool {
 	return ok
 }
 
-func NewConn(inner net.Conn, maxHeaderBytes int, httpOnHttpsPortErrorHandler HttpOnHttpsPortErrorHandler) net.Conn {
+func NewConn(
+	inner net.Conn,
+	httpServer *http.Server,
+	httpOnHttpsPortErrorHandler http.Handler,
+) net.Conn {
 	c, ok := inner.(*conn)
 	if !ok {
 		c = &conn{Conn: inner}
 	}
-	c.maxHeaderBytes = maxHeaderBytes
-	if c.maxHeaderBytes == 0 {
+	c.httpServer = httpServer
+	c.httpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
+	if httpServer != nil && httpServer.MaxHeaderBytes != 0 {
+		c.maxHeaderBytes = httpServer.MaxHeaderBytes
+	} else {
 		c.maxHeaderBytes = http.DefaultMaxHeaderBytes
 	}
-	c.httpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
 	return c
 }
 
-func (c *conn) Read(b []byte) (n int, err error) {
+func (c *conn) setReadHeaderTimeout() error {
+	if c.httpServer != nil && c.httpServer.ReadHeaderTimeout > 0 {
+		return c.Conn.SetReadDeadline(time.Now().Add(c.httpServer.ReadHeaderTimeout))
+	}
+	return c.setReadTimeout()
+}
+
+func (c *conn) setReadTimeout() error {
+	if c.httpServer != nil && c.httpServer.ReadTimeout > 0 {
+		return c.Conn.SetReadDeadline(time.Now().Add(c.httpServer.ReadTimeout))
+	}
+	return c.Conn.SetReadDeadline(time.Time{})
+}
+
+func (c *conn) setWriteTimeout() error {
+	if c.httpServer != nil && c.httpServer.WriteTimeout > 0 {
+		return c.Conn.SetWriteDeadline(time.Now().Add(c.httpServer.WriteTimeout))
+	}
+	return c.Conn.SetWriteDeadline(time.Time{})
+}
+
+func (c *conn) Read(b []byte) (int, error) {
 	if c.isNotFirstRead {
 		if !c.isReadingHttpHeader {
 			return c.Conn.Read(b)
 		}
-		if c.byteBuf > 0 {
-			b[0] = c.byteBuf
-			c.byteBuf = 0
+		if c.httpHeaderByteBuf > 0 {
+			b[0] = c.httpHeaderByteBuf
+			c.httpHeaderByteBuf = 0
 			return 1, nil
-		}
-		if c.maxHeaderBytes <= 0 {
-			return 0, http.ErrHeaderTooLong
 		}
 		if len(b) > c.maxHeaderBytes {
 			b = b[:c.maxHeaderBytes]
 		}
-		n, err = c.Conn.Read(b)
+		n, err := c.Conn.Read(b)
 		c.maxHeaderBytes -= n
-		return
+		return n, err
 	}
 	c.isNotFirstRead = true
-
-	// b Default 576 Bytes
 
 	// Read 1 Byte Header
 	rb1n, err := c.Conn.Read(b[:1])
 	if err != nil || rb1n == 0 {
-		return
+		return rb1n, err
 	}
-	c.maxHeaderBytes -= 1
+	c.maxHeaderBytes -= rb1n
 
 	switch b[0] {
 	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
@@ -85,30 +106,38 @@ func (c *conn) Read(b []byte) (n int, err error) {
 		return rb1n, nil
 	}
 
-	// HTTP Read 4096 Bytes Cache for redirect
-	c.byteBuf = b[0]
+	// Read HTTP header
+	defer c.Conn.Close()
+	c.httpHeaderByteBuf = b[0]
 	c.isReadingHttpHeader = true
-	req, err := http.ReadRequest(bufio.NewReader(c))
+	c.setReadHeaderTimeout()
+
+	r, err := http.ReadRequest(bufio.NewReader(c))
 	c.isReadingHttpHeader = false
 	if err != nil {
 		return 0, fmt.Errorf("hlfhr: %s", err)
 	}
-	if req.Host == "" {
-		return 0, ErrMissingHostHeader
-	}
 
+	// Response
 	err = ErrHttpOnHttpsPort
+	w := NewResponseWriter(c.Conn, nil)
+	c.setReadTimeout()
 
-	// handler
-	if c.httpOnHttpsPortErrorHandler != nil {
-		c.httpOnHttpsPortErrorHandler(b, c.Conn)
-		return
+	if r.Host == "" {
+		// Missing Host header
+		err = ErrMissingHostHeader
+		w.WriteHeader(400)
+		io.WriteString(w, "Missing Host header.")
+	} else if c.httpOnHttpsPortErrorHandler != nil {
+		// Handler
+		c.httpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+	} else {
+		// Redirect
+		http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
 	}
 
-	resp := NewResponse(c.Conn)
-	resp.Request = req
-
-	// 302 Found
-	resp.Redirect(302, "https://"+req.Host+req.URL.RequestURI())
-	return
+	// Write
+	c.setWriteTimeout()
+	w.WriteLock()
+	return 0, err
 }

@@ -14,10 +14,11 @@ curl -v -k -L http://localhost:5678/
 >
 < HTTP/1.1 302 Found
 < Connection: close
-< Date: Wed, 19 Jun 2024 14:20:10 GMT
+< Content-Length: 46
+< Content-Type: text/html; charset=utf-8
+< Date: Tue, 25 Jun 2024 10:10:11 GMT
 < Location: https://localhost:5678/
-< X-Redirect-By: hlfhr
-< Content-Length: 0
+< X-Powered-By: github.com/bddjr/hlfhr
 <
 * Request completely sent off
 * Closing connection
@@ -35,12 +36,13 @@ curl -v -k -L http://localhost:5678/
 > User-Agent: curl/8.7.1
 > Accept: */*
 >
+* Request completely sent off
 < HTTP/1.1 200 OK
 < Accept-Ranges: bytes
 < Content-Length: 320
 < Content-Type: text/html; charset=utf-8
 < Last-Modified: Wed, 19 Jun 2024 10:52:39 GMT
-< Date: Wed, 19 Jun 2024 14:20:10 GMT
+< Date: Tue, 25 Jun 2024 10:10:11 GMT
 <
 <html>
 
@@ -59,8 +61,7 @@ curl -v -k -L http://localhost:5678/
     <p>hlfhr</p>
 </body>
 
-</html>* Request completely sent off
-* Connection #1 to host localhost left intact
+</html>* Connection #1 to host localhost left intact
 ```
 
 [<= Back](README.md)
