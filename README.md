@@ -142,7 +142,9 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 // Keep Alive
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", srv.IdleTimeout.Seconds()))
+	if srv.IdleTimeout != 0 {
+		w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", srv.IdleTimeout.Seconds()))
+	}
 	w.WriteHeader(400)
 	io.WriteString(w, "Hello hlfhr")
 })
