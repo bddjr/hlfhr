@@ -150,7 +150,7 @@ func (c *conn) Read(b []byte) (int, error) {
 			}
 		} else {
 			// Redirect
-			RedirectToHttps(w, r, http.StatusFound)
+			RedirectToHttps(w, r, 302)
 		}
 
 		// Write

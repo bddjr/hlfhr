@@ -126,7 +126,7 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 	case "localhost":
 		hlfhr.RedirectToHttps(w, r, 302)
 	case "www.localhost", "127.0.0.1":
-		hlfhr.Redirect(w, "https://"+hlfhr.ReplaceHostname(r.Host, "localhost")+r.URL.RequestURI(), 302)
+		hlfhr.Redirect(w, 302, "https://"+hlfhr.ReplaceHostname(r.Host, "localhost")+r.URL.RequestURI())
 	default:
 		w.WriteHeader(421)
 	}

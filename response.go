@@ -56,11 +56,11 @@ func (rw *ResponseWriter) Finish() error {
 	return rw.Resp.Write(rw.Writer)
 }
 
-func Redirect(w http.ResponseWriter, url string, code int) {
+func Redirect(w http.ResponseWriter, code int, url string) {
 	w.Header().Set("Location", url)
 	w.WriteHeader(code)
 }
 
 func RedirectToHttps(w http.ResponseWriter, r *http.Request, code int) {
-	Redirect(w, "https://"+r.Host+r.URL.RequestURI(), code)
+	Redirect(w, code, "https://"+r.Host+r.URL.RequestURI())
 }
