@@ -55,3 +55,12 @@ func (rw *ResponseWriter) Finish() error {
 	rw.Resp.Body = io.NopCloser(rw.BodyBuf)
 	return rw.Resp.Write(rw.Writer)
 }
+
+func Redirect(w http.ResponseWriter, url string, code int) {
+	w.Header().Set("Location", url)
+	w.WriteHeader(code)
+}
+
+func RedirectToHttps(w http.ResponseWriter, r *http.Request, code int) {
+	Redirect(w, "https://"+r.Host+r.URL.RequestURI(), code)
+}

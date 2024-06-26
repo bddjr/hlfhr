@@ -14,11 +14,10 @@ curl -v -k -L http://localhost:5678/
 >
 < HTTP/1.1 302 Found
 < Connection: close
-< Content-Length: 46
-< Content-Type: text/html; charset=utf-8
-< Date: Tue, 25 Jun 2024 10:10:11 GMT
+< Date: Wed, 26 Jun 2024 01:27:58 GMT
 < Location: https://localhost:5678/
 < X-Powered-By: github.com/bddjr/hlfhr
+< Content-Length: 0
 <
 * Request completely sent off
 * Closing connection
@@ -42,7 +41,7 @@ curl -v -k -L http://localhost:5678/
 < Content-Length: 320
 < Content-Type: text/html; charset=utf-8
 < Last-Modified: Wed, 19 Jun 2024 10:52:39 GMT
-< Date: Tue, 25 Jun 2024 10:10:11 GMT
+< Date: Wed, 26 Jun 2024 01:27:58 GMT
 <
 <html>
 

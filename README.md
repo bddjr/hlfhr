@@ -116,23 +116,17 @@ Accept hijacking net.Conn.Read -> First byte looks like HTTP -> Read request -> 
 ```go
 // Default
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
+	hlfhr.RedirectToHttps(w, r, 302)
 })
 ```
 ```go
 // Check Host header
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	r.URL.Host = r.Host
-	switch r.URL.Hostname() {
+	switch hlfhr.Hostname(r.Host) {
 	case "localhost":
-		http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
+		hlfhr.RedirectToHttps(w, r, 302)
 	case "www.localhost", "127.0.0.1":
-		s := "https://localhost"
-		if port := r.URL.Port(); port != "" {
-			s += ":" + port
-		}
-		s += r.URL.RequestURI()
-		http.Redirect(w, r, s, http.StatusFound)
+		hlfhr.Redirect(w, "https://"+hlfhr.ReplaceHostname(r.Host, "localhost")+r.URL.RequestURI(), 302)
 	default:
 		w.WriteHeader(421)
 	}
@@ -220,6 +214,62 @@ hw := http.ResponseWriter(w)
 ```go
 var w *hlfhr.ResponseWriter
 w.Finish()
+```
+
+#### Redirect
+```go
+var w http.ResponseWriter
+hlfhr.Redirect(w, "https://example.com/", 302)
+```
+
+#### RedirectToHttps
+```go
+var w http.ResponseWriter
+var r *http.Request
+hlfhr.RedirectToHttps(w, r, 302)
+```
+
+#### SplitHostnamePort
+```go
+hostname, port := hlfhr.SplitHostnamePort("[::1]:5678")
+// hostname: [::1]
+// port: 5678
+```
+
+#### Hostname
+```go
+hostname := hlfhr.Hostname("[::1]:5678")
+// hostname: [::1]
+```
+
+#### Port
+```go
+port := hlfhr.Port("[::1]:5678")
+// port: 5678
+```
+
+#### HostnameAppendPort
+```go
+Host := hlfhr.HostnameAppendPort("[::1]", "5678")
+// Host: [::1]:5678
+```
+
+#### ReplaceHostname
+```go
+Host := hlfhr.ReplaceHostname("[::1]:5678", "localhost")
+// Host: localhost:5678
+```
+
+#### ReplacePort
+```go
+Host := hlfhr.ReplacePort("[::1]:5678", "7890")
+// Host: [::1]:7890
+```
+
+#### Ipv6CutPrefixSuffix
+```go
+v6 := hlfhr.Ipv6CutPrefixSuffix("[::1]")
+// v6: ::1
 ```
 
 

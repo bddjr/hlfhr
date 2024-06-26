@@ -147,7 +147,7 @@ func (c *conn) Read(b []byte) (int, error) {
 			c.httpOnHttpsPortErrorHandler.ServeHTTP(w, r)
 		} else {
 			// Redirect
-			http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
+			RedirectToHttps(w, r, http.StatusFound)
 		}
 
 		// Write
