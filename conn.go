@@ -145,6 +145,9 @@ func (c *conn) Read(b []byte) (int, error) {
 		} else if c.httpOnHttpsPortErrorHandler != nil {
 			// Handler
 			c.httpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+			if c.httpServer.IdleTimeout != 0 && w.Header().Get("Connection") == "keep-alive" && w.Header().Get("Keep-Alive") == "" {
+				w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", c.httpServer.IdleTimeout.Seconds()))
+			}
 		} else {
 			// Redirect
 			RedirectToHttps(w, r, http.StatusFound)

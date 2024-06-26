@@ -120,7 +120,7 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 })
 ```
 ```go
-// Check Host header
+// Check Host Header
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	switch hlfhr.Hostname(r.Host) {
 	case "localhost":
@@ -133,12 +133,17 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 })
 ```
 ```go
+// Script Redirect
+srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(400)
+	io.WriteString(w, "<script> location.protocol = 'https:' </script>")
+})
+```
+```go
 // Keep Alive
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
-	if srv.IdleTimeout != 0 {
-		w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", srv.IdleTimeout.Seconds()))
-	}
 	w.WriteHeader(400)
 	io.WriteString(w, "Hello hlfhr")
 })
