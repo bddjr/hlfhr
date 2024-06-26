@@ -23,7 +23,6 @@ type conn struct {
 	isNotFirstRead      bool
 	isReadingHttpHeader bool
 	httpHeaderByteBuf   byte
-	canWrite100Continue bool
 }
 
 func IsMyConn(inner net.Conn) bool {
@@ -83,10 +82,6 @@ func (c *conn) setWriteTimeout() error {
 
 func (c *conn) Read(b []byte) (int, error) {
 	if c.isNotFirstRead {
-		if c.canWrite100Continue {
-			c.canWrite100Continue = false
-			io.WriteString(c.Conn, "HTTP/1.1 100 Continue\r\n\r\n")
-		}
 		if !c.isReadingHttpHeader {
 			return c.Conn.Read(b)
 		}
@@ -147,25 +142,12 @@ func (c *conn) Read(b []byte) (int, error) {
 			// Missing Host header
 			w.WriteHeader(400)
 			io.WriteString(w, "Missing Host header.")
+		} else if c.httpOnHttpsPortErrorHandler != nil {
+			// Handler
+			c.httpOnHttpsPortErrorHandler.ServeHTTP(w, r)
 		} else {
-			run := true
-			if e := r.Header.Get("Expect"); e != "" {
-				if e == "100-continue" && r.ProtoAtLeast(1, 1) && r.ContentLength != 0 {
-					c.canWrite100Continue = true
-				} else {
-					w.WriteHeader(417)
-					run = false
-				}
-			}
-			if !run {
-				// Write
-			} else if c.httpOnHttpsPortErrorHandler != nil {
-				// Handler
-				c.httpOnHttpsPortErrorHandler.ServeHTTP(w, r)
-			} else {
-				// Redirect
-				http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
-			}
+			// Redirect
+			http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
 		}
 
 		// Write
