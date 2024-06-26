@@ -224,7 +224,7 @@ w.Finish()
 #### Redirect
 ```go
 var w http.ResponseWriter
-hlfhr.Redirect(w, "https://example.com/", 302)
+hlfhr.Redirect(w, 302, "https://example.com/")
 ```
 
 #### RedirectToHttps
