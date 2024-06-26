@@ -2,11 +2,9 @@
 
 这个 mod 通过劫持 `net.Conn` 实现了一个功能:   
 当用户使用 http 协议访问 https 端口时，服务器返回302重定向。  
-改编自 `net/http` 。  
 
 This mod implements a feature by hijacking `net.Conn` :  
 If a user accesses an https port using http, the server returns 302 redirection.  
-Adapted from `net/http`  and `crypto/tls` .  
 
 Related Issue:  
 [net/http: configurable error message for Client sent an HTTP request to an HTTPS server. #49310](https://github.com/golang/go/issues/49310)  
@@ -140,6 +138,15 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 	}
 })
 ```
+```go
+// Keep Alive
+srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", srv.IdleTimeout.Seconds()))
+	w.WriteHeader(400)
+	io.WriteString(w, "Hello hlfhr")
+})
+```
 
 ***
 ## Feature Example
@@ -207,10 +214,10 @@ w := hlfhr.NewResponseWriter(c, nil)
 hw := http.ResponseWriter(w)
 ```
 
-#### ResponseWriter.WriteLock
+#### ResponseWriter.Finish
 ```go
 var w *hlfhr.ResponseWriter
-w.WriteLock()
+w.Finish()
 ```
 
 

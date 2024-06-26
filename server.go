@@ -1,7 +1,5 @@
 // HTTPS Listener For HTTP Redirect
 //
-// Adapted from net/http and crypto/tls
-//
 // BSD-3-clause license
 package hlfhr
 

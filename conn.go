@@ -11,7 +11,6 @@ import (
 )
 
 var ErrHttpOnHttpsPort = errors.New("hlfhr: Client sent an HTTP request to an HTTPS server")
-var ErrMissingHostHeader = errors.New("hlfhr: Missing Host header")
 
 type conn struct {
 	net.Conn
@@ -24,6 +23,7 @@ type conn struct {
 	isNotFirstRead      bool
 	isReadingHttpHeader bool
 	httpHeaderByteBuf   byte
+	canWrite100Continue bool
 }
 
 func IsMyConn(inner net.Conn) bool {
@@ -42,12 +42,22 @@ func NewConn(
 	}
 	c.httpServer = httpServer
 	c.httpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
-	if httpServer != nil && httpServer.MaxHeaderBytes != 0 {
-		c.maxHeaderBytes = httpServer.MaxHeaderBytes
+	return c
+}
+
+func (c *conn) resetMaxHeaderBytes() {
+	if c.httpServer != nil && c.httpServer.MaxHeaderBytes != 0 {
+		c.maxHeaderBytes = c.httpServer.MaxHeaderBytes
 	} else {
 		c.maxHeaderBytes = http.DefaultMaxHeaderBytes
 	}
-	return c
+}
+
+func (c *conn) setKeepAliveTimeout() error {
+	if c.httpServer != nil && c.httpServer.IdleTimeout > 0 {
+		return c.Conn.SetReadDeadline(time.Now().Add(c.httpServer.IdleTimeout))
+	}
+	return c.setReadHeaderTimeout()
 }
 
 func (c *conn) setReadHeaderTimeout() error {
@@ -73,6 +83,10 @@ func (c *conn) setWriteTimeout() error {
 
 func (c *conn) Read(b []byte) (int, error) {
 	if c.isNotFirstRead {
+		if c.canWrite100Continue {
+			c.canWrite100Continue = false
+			io.WriteString(c.Conn, "HTTP/1.1 100 Continue\r\n\r\n")
+		}
 		if !c.isReadingHttpHeader {
 			return c.Conn.Read(b)
 		}
@@ -80,6 +94,9 @@ func (c *conn) Read(b []byte) (int, error) {
 			b[0] = c.httpHeaderByteBuf
 			c.httpHeaderByteBuf = 0
 			return 1, nil
+		}
+		if c.maxHeaderBytes <= 0 {
+			return 0, http.ErrHeaderTooLong
 		}
 		if len(b) > c.maxHeaderBytes {
 			b = b[:c.maxHeaderBytes]
@@ -89,6 +106,7 @@ func (c *conn) Read(b []byte) (int, error) {
 		return n, err
 	}
 	c.isNotFirstRead = true
+	c.resetMaxHeaderBytes()
 
 	// Read 1 Byte Header
 	rb1n, err := c.Conn.Read(b[:1])
@@ -106,38 +124,62 @@ func (c *conn) Read(b []byte) (int, error) {
 		return rb1n, nil
 	}
 
-	// Read HTTP header
+	// HTTP/1.1
 	defer c.Conn.Close()
 	c.httpHeaderByteBuf = b[0]
-	c.isReadingHttpHeader = true
 	c.setReadHeaderTimeout()
+	for {
+		// Read HTTP header
+		c.isReadingHttpHeader = true
+		r, err := http.ReadRequest(bufio.NewReader(c))
+		c.isReadingHttpHeader = false
+		if err != nil {
+			return 0, fmt.Errorf("hlfhr read: %s", err)
+		}
 
-	r, err := http.ReadRequest(bufio.NewReader(c))
-	c.isReadingHttpHeader = false
-	if err != nil {
-		return 0, fmt.Errorf("hlfhr: %s", err)
+		// Response
+		w := NewResponseWriter(c.Conn, nil)
+		w.Resp.Request = r
+		r.Response = w.Resp
+		c.setReadTimeout()
+
+		if r.Host == "" {
+			// Missing Host header
+			w.WriteHeader(400)
+			io.WriteString(w, "Missing Host header.")
+		} else {
+			run := true
+			if e := r.Header.Get("Expect"); e != "" {
+				if e == "100-continue" && r.ProtoAtLeast(1, 1) && r.ContentLength != 0 {
+					c.canWrite100Continue = true
+				} else {
+					w.WriteHeader(417)
+					run = false
+				}
+			}
+			if !run {
+				// Write
+			} else if c.httpOnHttpsPortErrorHandler != nil {
+				// Handler
+				c.httpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+			} else {
+				// Redirect
+				http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
+			}
+		}
+
+		// Write
+		c.setWriteTimeout()
+		if err := w.Finish(); err != nil {
+			return 0, fmt.Errorf("hlfhr write: %s", err)
+		}
+		if w.Resp.Close || w.Header().Get("Connection") == "close" {
+			// Close.
+			return 0, ErrHttpOnHttpsPort
+		}
+
+		// Keep Alive
+		c.resetMaxHeaderBytes()
+		c.setKeepAliveTimeout()
 	}
-
-	// Response
-	err = ErrHttpOnHttpsPort
-	w := NewResponseWriter(c.Conn, nil)
-	c.setReadTimeout()
-
-	if r.Host == "" {
-		// Missing Host header
-		err = ErrMissingHostHeader
-		w.WriteHeader(400)
-		io.WriteString(w, "Missing Host header.")
-	} else if c.httpOnHttpsPortErrorHandler != nil {
-		// Handler
-		c.httpOnHttpsPortErrorHandler.ServeHTTP(w, r)
-	} else {
-		// Redirect
-		http.Redirect(w, r, "https://"+r.Host+r.URL.RequestURI(), http.StatusFound)
-	}
-
-	// Write
-	c.setWriteTimeout()
-	w.WriteLock()
-	return 0, err
 }
