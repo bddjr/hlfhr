@@ -12,11 +12,11 @@ import (
 
 var ErrHttpOnHttpsPort = errors.New("hlfhr: Client sent an HTTP request to an HTTPS server")
 
-type conn struct {
+type Conn struct {
 	net.Conn
 
-	httpServer                  *http.Server
-	httpOnHttpsPortErrorHandler http.Handler
+	HttpServer                  *http.Server
+	HttpOnHttpsPortErrorHandler http.Handler
 
 	maxHeaderBytes int
 
@@ -26,7 +26,7 @@ type conn struct {
 }
 
 func IsMyConn(inner net.Conn) bool {
-	_, ok := inner.(*conn)
+	_, ok := inner.(*Conn)
 	return ok
 }
 
@@ -35,52 +35,52 @@ func NewConn(
 	httpServer *http.Server,
 	httpOnHttpsPortErrorHandler http.Handler,
 ) net.Conn {
-	c, ok := inner.(*conn)
+	c, ok := inner.(*Conn)
 	if !ok {
-		c = &conn{Conn: inner}
+		c = &Conn{Conn: inner}
 	}
-	c.httpServer = httpServer
-	c.httpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
+	c.HttpServer = httpServer
+	c.HttpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
 	return c
 }
 
-func (c *conn) resetMaxHeaderBytes() {
-	if c.httpServer != nil && c.httpServer.MaxHeaderBytes != 0 {
-		c.maxHeaderBytes = c.httpServer.MaxHeaderBytes
+func (c *Conn) resetMaxHeaderBytes() {
+	if c.HttpServer != nil && c.HttpServer.MaxHeaderBytes != 0 {
+		c.maxHeaderBytes = c.HttpServer.MaxHeaderBytes
 	} else {
 		c.maxHeaderBytes = http.DefaultMaxHeaderBytes
 	}
 }
 
-func (c *conn) setKeepAliveTimeout() error {
-	if c.httpServer != nil && c.httpServer.IdleTimeout > 0 {
-		return c.Conn.SetReadDeadline(time.Now().Add(c.httpServer.IdleTimeout))
+func (c *Conn) setKeepAliveTimeout() error {
+	if c.HttpServer != nil && c.HttpServer.IdleTimeout > 0 {
+		return c.Conn.SetReadDeadline(time.Now().Add(c.HttpServer.IdleTimeout))
 	}
 	return c.setReadHeaderTimeout()
 }
 
-func (c *conn) setReadHeaderTimeout() error {
-	if c.httpServer != nil && c.httpServer.ReadHeaderTimeout > 0 {
-		return c.Conn.SetReadDeadline(time.Now().Add(c.httpServer.ReadHeaderTimeout))
+func (c *Conn) setReadHeaderTimeout() error {
+	if c.HttpServer != nil && c.HttpServer.ReadHeaderTimeout > 0 {
+		return c.Conn.SetReadDeadline(time.Now().Add(c.HttpServer.ReadHeaderTimeout))
 	}
 	return c.setReadTimeout()
 }
 
-func (c *conn) setReadTimeout() error {
-	if c.httpServer != nil && c.httpServer.ReadTimeout > 0 {
-		return c.Conn.SetReadDeadline(time.Now().Add(c.httpServer.ReadTimeout))
+func (c *Conn) setReadTimeout() error {
+	if c.HttpServer != nil && c.HttpServer.ReadTimeout > 0 {
+		return c.Conn.SetReadDeadline(time.Now().Add(c.HttpServer.ReadTimeout))
 	}
 	return c.Conn.SetReadDeadline(time.Time{})
 }
 
-func (c *conn) setWriteTimeout() error {
-	if c.httpServer != nil && c.httpServer.WriteTimeout > 0 {
-		return c.Conn.SetWriteDeadline(time.Now().Add(c.httpServer.WriteTimeout))
+func (c *Conn) setWriteTimeout() error {
+	if c.HttpServer != nil && c.HttpServer.WriteTimeout > 0 {
+		return c.Conn.SetWriteDeadline(time.Now().Add(c.HttpServer.WriteTimeout))
 	}
 	return c.Conn.SetWriteDeadline(time.Time{})
 }
 
-func (c *conn) Read(b []byte) (int, error) {
+func (c *Conn) Read(b []byte) (int, error) {
 	if c.isNotFirstRead {
 		if !c.isReadingHttpHeader {
 			return c.Conn.Read(b)
@@ -142,11 +142,11 @@ func (c *conn) Read(b []byte) (int, error) {
 			// Missing Host header
 			w.WriteHeader(400)
 			io.WriteString(w, "Missing Host header.")
-		} else if c.httpOnHttpsPortErrorHandler != nil {
+		} else if c.HttpOnHttpsPortErrorHandler != nil {
 			// Handler
-			c.httpOnHttpsPortErrorHandler.ServeHTTP(w, r)
-			if c.httpServer.IdleTimeout != 0 && w.Header().Get("Connection") == "keep-alive" && w.Header().Get("Keep-Alive") == "" {
-				w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", c.httpServer.IdleTimeout.Seconds()))
+			c.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+			if c.HttpServer.IdleTimeout != 0 && w.Header().Get("Connection") == "keep-alive" && w.Header().Get("Keep-Alive") == "" {
+				w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", c.HttpServer.IdleTimeout.Seconds()))
 			}
 		} else {
 			// Redirect

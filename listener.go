@@ -5,15 +5,15 @@ import (
 	"net/http"
 )
 
-type listener struct {
+type Listener struct {
 	net.Listener
 
-	httpServer                  *http.Server
-	httpOnHttpsPortErrorHandler http.Handler
+	HttpServer                  *http.Server
+	HttpOnHttpsPortErrorHandler http.Handler
 }
 
 func IsMyListener(inner net.Listener) bool {
-	_, ok := inner.(*listener)
+	_, ok := inner.(*Listener)
 	return ok
 }
 
@@ -22,23 +22,23 @@ func NewListener(
 	httpServer *http.Server,
 	httpOnHttpsPortErrorHandler http.Handler,
 ) net.Listener {
-	l, ok := inner.(*listener)
+	l, ok := inner.(*Listener)
 	if !ok {
-		l = &listener{Listener: inner}
+		l = &Listener{Listener: inner}
 	}
-	l.httpServer = httpServer
-	l.httpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
+	l.HttpServer = httpServer
+	l.HttpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
 	return l
 }
 
-func (l *listener) Accept() (c net.Conn, err error) {
+func (l *Listener) Accept() (c net.Conn, err error) {
 	c, err = l.Listener.Accept()
 	if err == nil {
 		// Hijacking net.Conn
 		c = NewConn(
 			c,
-			l.httpServer,
-			l.httpOnHttpsPortErrorHandler,
+			l.HttpServer,
+			l.HttpOnHttpsPortErrorHandler,
 		)
 	}
 	return
