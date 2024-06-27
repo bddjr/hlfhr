@@ -50,7 +50,8 @@ func (rw *ResponseWriter) WriteHeader(statusCode int) {
 	rw.Resp.StatusCode = statusCode
 }
 
-func (rw *ResponseWriter) Finish() error {
+// Flush flushes buffered data to the client.
+func (rw *ResponseWriter) Flush() error {
 	rw.Resp.ContentLength = int64(rw.BodyBuf.Len())
 	rw.Resp.Body = io.NopCloser(rw.BodyBuf)
 	return rw.Resp.Write(rw.Writer)

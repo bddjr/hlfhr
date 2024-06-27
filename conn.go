@@ -155,7 +155,7 @@ func (c *Conn) Read(b []byte) (int, error) {
 
 		// Write
 		c.setWriteTimeout()
-		if err := w.Finish(); err != nil {
+		if err := w.Flush(); err != nil {
 			return 0, fmt.Errorf("hlfhr write: %s", err)
 		}
 		if w.Resp.Close || w.Header().Get("Connection") == "close" {
