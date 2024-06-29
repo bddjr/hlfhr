@@ -22,7 +22,6 @@ type Conn struct {
 
 	isNotFirstRead      bool
 	isReadingHttpHeader bool
-	httpHeaderByteBuf   byte
 }
 
 func IsMyConn(inner net.Conn) bool {
@@ -56,7 +55,7 @@ func (c *Conn) setKeepAliveTimeout() error {
 	if c.HttpServer != nil && c.HttpServer.IdleTimeout > 0 {
 		return c.Conn.SetReadDeadline(time.Now().Add(c.HttpServer.IdleTimeout))
 	}
-	return c.setReadHeaderTimeout()
+	return c.setReadTimeout()
 }
 
 func (c *Conn) setReadHeaderTimeout() error {
@@ -85,11 +84,6 @@ func (c *Conn) Read(b []byte) (int, error) {
 		if !c.isReadingHttpHeader {
 			return c.Conn.Read(b)
 		}
-		if c.httpHeaderByteBuf > 0 {
-			b[0] = c.httpHeaderByteBuf
-			c.httpHeaderByteBuf = 0
-			return 1, nil
-		}
 		if c.maxHeaderBytes <= 0 {
 			return 0, http.ErrHeaderTooLong
 		}
@@ -101,32 +95,32 @@ func (c *Conn) Read(b []byte) (int, error) {
 		return n, err
 	}
 	c.isNotFirstRead = true
-	c.resetMaxHeaderBytes()
+	rBuf := bufio.NewReader(c)
 
 	// Read 1 Byte Header
-	rb1n, err := c.Conn.Read(b[:1])
-	if err != nil || rb1n == 0 {
-		return rb1n, err
-	}
-	c.maxHeaderBytes -= rb1n
-
-	switch b[0] {
-	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
-		// Looks like HTTP.
-	default:
-		// Not looks like HTTP.
-		// TLS handshake: 0x16
-		return rb1n, nil
+	{
+		rb1, err := rBuf.Peek(1)
+		if err != nil {
+			return 0, err
+		}
+		switch rb1[0] {
+		case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
+			// Looks like HTTP.
+		default:
+			// Not looks like HTTP.
+			// TLS handshake: 0x16
+			return rBuf.Read(b)
+		}
 	}
 
 	// HTTP/1.1
 	defer c.Conn.Close()
-	c.httpHeaderByteBuf = b[0]
 	c.setReadHeaderTimeout()
 	for {
 		// Read HTTP header
+		c.resetMaxHeaderBytes()
 		c.isReadingHttpHeader = true
-		r, err := http.ReadRequest(bufio.NewReader(c))
+		r, err := http.ReadRequest(rBuf)
 		c.isReadingHttpHeader = false
 		if err != nil {
 			return 0, fmt.Errorf("hlfhr read: %s", err)
@@ -136,7 +130,6 @@ func (c *Conn) Read(b []byte) (int, error) {
 		w := NewResponseWriter(c.Conn, nil)
 		w.Resp.Request = r
 		r.Response = w.Resp
-		c.setReadTimeout()
 
 		if r.Host == "" {
 			// Missing Host header
@@ -144,7 +137,12 @@ func (c *Conn) Read(b []byte) (int, error) {
 			io.WriteString(w, "Missing Host header.")
 		} else if c.HttpOnHttpsPortErrorHandler != nil {
 			// Handler
+			c.setReadTimeout()
 			c.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+			if w.Hijacked {
+				// Close
+				return 0, ErrHttpOnHttpsPort
+			}
 			if c.HttpServer.IdleTimeout != 0 && w.Header().Get("Connection") == "keep-alive" && w.Header().Get("Keep-Alive") == "" {
 				w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", c.HttpServer.IdleTimeout.Seconds()))
 			}
@@ -159,12 +157,11 @@ func (c *Conn) Read(b []byte) (int, error) {
 			return 0, fmt.Errorf("hlfhr write: %s", err)
 		}
 		if w.Resp.Close || w.Header().Get("Connection") == "close" {
-			// Close.
+			// Close
 			return 0, ErrHttpOnHttpsPort
 		}
 
 		// Keep Alive
-		c.resetMaxHeaderBytes()
 		c.setKeepAliveTimeout()
 	}
 }

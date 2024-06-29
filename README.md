@@ -215,10 +215,10 @@ w := hlfhr.NewResponseWriter(c, nil)
 hw := http.ResponseWriter(w)
 ```
 
-#### ResponseWriter.Flush
+#### http.NewResponseController
 ```go
-var w *hlfhr.ResponseWriter
-w.Flush()
+var w http.ResponseWriter
+rc := http.NewResponseController(w)
 ```
 
 #### Redirect
