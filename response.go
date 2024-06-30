@@ -28,8 +28,9 @@ type ResponseWriter struct {
 	Conn    net.Conn
 	BodyBuf *bytes.Buffer
 
-	HijackRW *bufio.ReadWriter
-	Hijacked bool
+	HijackRBuf *bufio.Reader
+	HijackRW   *bufio.ReadWriter
+	Hijacked   bool
 }
 
 func NewResponseWriter(conn net.Conn, resp *http.Response) *ResponseWriter {
@@ -67,8 +68,11 @@ func (rw *ResponseWriter) Flush() error {
 func (rw *ResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	rw.Hijacked = true
 	if rw.HijackRW == nil {
+		if rw.HijackRBuf == nil {
+			rw.HijackRBuf = bufio.NewReader(rw.Conn)
+		}
 		rw.HijackRW = bufio.NewReadWriter(
-			bufio.NewReader(rw.Conn),
+			rw.HijackRBuf,
 			bufio.NewWriter(rw.Conn),
 		)
 	}

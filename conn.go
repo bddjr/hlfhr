@@ -43,9 +43,9 @@ func NewConn(
 	return c
 }
 
-func (c *Conn) resetMaxHeaderBytes() {
+func (c *Conn) resetMaxHeaderBytes(Min int) {
 	if c.HttpServer != nil && c.HttpServer.MaxHeaderBytes != 0 {
-		c.maxHeaderBytes = c.HttpServer.MaxHeaderBytes
+		c.maxHeaderBytes = max(c.HttpServer.MaxHeaderBytes, Min)
 	} else {
 		c.maxHeaderBytes = http.DefaultMaxHeaderBytes
 	}
@@ -95,11 +95,19 @@ func (c *Conn) Read(b []byte) (int, error) {
 		return n, err
 	}
 	c.isNotFirstRead = true
-	rBuf := bufio.NewReader(c)
+
+	rBuf := bufio.NewReaderSize(c, len(b)) // Size: 576
+	if len(b) < rBuf.Size() {
+		// HTTPS should work even if the standard library is modified
+		return c.Conn.Read(b)
+	}
 
 	// Read 1 Byte Header
 	{
+		c.resetMaxHeaderBytes(len(b))
+		c.isReadingHttpHeader = true
 		rb1, err := rBuf.Peek(1)
+		c.isReadingHttpHeader = false
 		if err != nil {
 			return 0, err
 		}
@@ -118,7 +126,6 @@ func (c *Conn) Read(b []byte) (int, error) {
 	c.setReadHeaderTimeout()
 	for {
 		// Read HTTP header
-		c.resetMaxHeaderBytes()
 		c.isReadingHttpHeader = true
 		r, err := http.ReadRequest(rBuf)
 		c.isReadingHttpHeader = false
@@ -128,15 +135,19 @@ func (c *Conn) Read(b []byte) (int, error) {
 
 		// Response
 		w := NewResponseWriter(c.Conn, nil)
-		w.Resp.Request = r
-		r.Response = w.Resp
 
 		if r.Host == "" {
 			// Missing Host header
 			w.WriteHeader(400)
 			io.WriteString(w, "Missing Host header.")
-		} else if c.HttpOnHttpsPortErrorHandler != nil {
+		} else if c.HttpOnHttpsPortErrorHandler == nil {
+			// Redirect
+			RedirectToHttps(w, r, 302)
+		} else {
 			// Handler
+			w.Resp.Request = r
+			r.Response = w.Resp
+			w.HijackRBuf = rBuf
 			c.setReadTimeout()
 			c.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
 			if w.Hijacked {
@@ -146,9 +157,6 @@ func (c *Conn) Read(b []byte) (int, error) {
 			if c.HttpServer.IdleTimeout != 0 && w.Header().Get("Connection") == "keep-alive" && w.Header().Get("Keep-Alive") == "" {
 				w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", c.HttpServer.IdleTimeout.Seconds()))
 			}
-		} else {
-			// Redirect
-			RedirectToHttps(w, r, 302)
 		}
 
 		// Write
@@ -162,6 +170,8 @@ func (c *Conn) Read(b []byte) (int, error) {
 		}
 
 		// Keep Alive
+		rBuf.Reset(c)
+		c.resetMaxHeaderBytes(len(b))
 		c.setKeepAliveTimeout()
 	}
 }
