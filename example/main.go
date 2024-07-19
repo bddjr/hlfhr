@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -15,8 +14,6 @@ var srv *hlfhr.Server
 var rootPath string
 
 func main() {
-	getRootPath()
-
 	// Use hlfhr.New
 	srv = hlfhr.New(&http.Server{
 		Addr:              ":5678",
@@ -28,23 +25,12 @@ func main() {
 
 	testPrint(srv)
 
-	err := srv.ListenAndServeTLS(
-		filepath.Join(rootPath, "localhost.crt"),
-		filepath.Join(rootPath, "localhost.key"),
-	)
+	err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
 	fmt.Println(err)
 }
 
 func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filepath.Join(rootPath, "web", r.URL.Path))
-}
-
-func getRootPath() {
-	ex, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	rootPath = filepath.Dir(ex)
 }
 
 func testPrint(srv *hlfhr.Server) {

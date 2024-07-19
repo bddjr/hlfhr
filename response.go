@@ -12,7 +12,6 @@ import (
 func NewResponse() *http.Response {
 	h := make(http.Header)
 	h.Set("Date", time.Now().UTC().Format(http.TimeFormat))
-	h.Set("X-Powered-By", "github.com/bddjr/hlfhr")
 	h.Set("Connection", "close")
 	return &http.Response{
 		ProtoMajor: 1,

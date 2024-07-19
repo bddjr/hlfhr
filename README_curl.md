@@ -14,9 +14,8 @@ curl -v -k -L http://localhost:5678/
 >
 < HTTP/1.1 302 Found
 < Connection: close
-< Date: Wed, 26 Jun 2024 01:27:58 GMT
+< Date: Fri, 19 Jul 2024 05:21:42 GMT
 < Location: https://localhost:5678/
-< X-Powered-By: github.com/bddjr/hlfhr
 < Content-Length: 0
 <
 * Request completely sent off
@@ -41,7 +40,7 @@ curl -v -k -L http://localhost:5678/
 < Content-Length: 320
 < Content-Type: text/html; charset=utf-8
 < Last-Modified: Wed, 19 Jun 2024 10:52:39 GMT
-< Date: Wed, 26 Jun 2024 01:27:58 GMT
+< Date: Fri, 19 Jul 2024 05:21:42 GMT
 <
 <html>
 
