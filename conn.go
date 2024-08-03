@@ -142,7 +142,7 @@ func (c *Conn) Read(b []byte) (int, error) {
 			io.WriteString(w, "Missing Host header.")
 		} else if c.HttpOnHttpsPortErrorHandler == nil {
 			// Redirect
-			RedirectToHttps(w, r, 302)
+			RedirectToHttps(w, r, 307)
 		} else {
 			// Handler
 			w.Resp.Request = r
