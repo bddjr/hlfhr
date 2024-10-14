@@ -121,8 +121,13 @@ func (c *conn) Read(b []byte) (int, error) {
 	chhr.isReadingHttpHeader = false
 
 	if !ok {
+		if err == nil {
+			// n < 1
+			c.isNotFirstRead = false
+		}
 		return 0, err
 	}
+
 	switch firstByte {
 	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
 		// Looks like HTTP.
