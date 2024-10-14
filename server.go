@@ -1,6 +1,6 @@
 // HTTPS Listener For HTTP Redirect
 //
-// BSD-3-clause license
+// https://github.com/bddjr/hlfhr
 package hlfhr
 
 import (

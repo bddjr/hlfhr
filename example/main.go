@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
-	"path/filepath"
 	"runtime"
 	"time"
 
@@ -11,7 +11,6 @@ import (
 )
 
 var srv *hlfhr.Server
-var rootPath string
 
 func main() {
 	// Use hlfhr.New
@@ -30,7 +29,13 @@ func main() {
 }
 
 func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, filepath.Join(rootPath, "web", r.URL.Path))
+	if r.URL.Path == "/" {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(200)
+		io.WriteString(w, "Hello hlfhr!\n\n")
+	} else {
+		http.NotFound(w, r)
+	}
 }
 
 func testPrint(srv *hlfhr.Server) {

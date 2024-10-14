@@ -14,7 +14,7 @@ curl -v -k -L http://localhost:5678/
 >
 < HTTP/1.1 302 Found
 < Connection: close
-< Date: Fri, 19 Jul 2024 05:21:42 GMT
+< Date: Mon, 14 Oct 2024 10:34:55 GMT
 < Location: https://localhost:5678/
 < Content-Length: 0
 <
@@ -34,32 +34,15 @@ curl -v -k -L http://localhost:5678/
 > User-Agent: curl/8.7.1
 > Accept: */*
 >
-* Request completely sent off
 < HTTP/1.1 200 OK
-< Accept-Ranges: bytes
-< Content-Length: 320
-< Content-Type: text/html; charset=utf-8
-< Last-Modified: Wed, 19 Jun 2024 10:52:39 GMT
-< Date: Fri, 19 Jul 2024 05:21:42 GMT
+< Content-Type: text/plain
+< Date: Mon, 14 Oct 2024 10:34:55 GMT
+< Content-Length: 14
 <
-<html>
+Hello hlfhr!
 
-<head>
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * {
-            color-scheme: light dark;
-        }
-    </style>
-</head>
-
-<body>
-    <h1>Hello HTTPS!</h1>
-    <p>hlfhr</p>
-</body>
-
-</html>* Connection #1 to host localhost left intact
+* Request completely sent off
+* Connection #1 to host localhost left intact
 ```
 
 [<= Back](README.md)

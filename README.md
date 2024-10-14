@@ -1,27 +1,32 @@
 # HTTPS Listener For HTTP Redirect
 
-这个 mod 通过劫持 `net.Conn` 实现了一个功能:   
-当用户使用 http 协议访问 https 端口时，服务器返回302重定向。  
-
 This mod implements a feature by hijacking `net.Conn` :  
 If a user accesses an https port using http, the server returns 302 redirection.  
+The principle is similar to reverse proxy.
+
+这个 mod 通过劫持 `net.Conn` 实现了一个功能:  
+当用户使用 http 协议访问 https 端口时，服务器返回 302 重定向。  
+原理与反向代理相似。
 
 Related Issue:  
-[net/http: configurable error message for Client sent an HTTP request to an HTTPS server. #49310](https://github.com/golang/go/issues/49310)  
+[net/http: configurable error message for Client sent an HTTP request to an HTTPS server. #49310](https://github.com/golang/go/issues/49310)
 
+---
 
-***
 ## Get
+
 ```
 go get github.com/bddjr/hlfhr
 ```
 
+---
 
-***
 ## Example
-[See example/main.go](example/main.go)  
 
-Example:  
+[See example/main.go](example/main.go)
+
+Example:
+
 ```go
 var srv *hlfhr.Server
 
@@ -41,6 +46,7 @@ func main() {
 	fmt.Println(err)
 }
 ```
+
 ```go
 var l net.Listener
 var srv *http.Server
@@ -66,12 +72,14 @@ func main() {
 	// Use hlfhr.NewListener
 	l = hlfhr.NewListener(l, srv, nil)
 
+	// Must use ServeTLS! For issue https://github.com/bddjr/hlfhr/issues/4
 	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
 	fmt.Println(err)
 }
 ```
 
-Run:  
+Run:
+
 ```
 git clone https://github.com/bddjr/hlfhr
 cd hlfhr
@@ -86,36 +94,39 @@ cd hlfhr
 2024/06/20 11:50:09 http: TLS handshake error from [::1]:60470: hlfhr: Client sent an HTTP request to an HTTPS server
 ```
 
+---
 
-***
 ## Logic
 
-[See request](README_curl.md)  
+[See request](README_curl.md)
 
-HTTPS Server Start -> Hijacking net.Listener.Accept  
+HTTPS Server Start -> Hijacking net.Listener.Accept
 
-### Client HTTPS 
-Accept hijacking net.Conn.Read -> First byte not looks like HTTP -> ✅Continue...  
+### Client HTTPS
+
+First byte not looks like HTTP -> ✅Continue...
 
 ### Client HTTP/1.1
-Accept hijacking net.Conn.Read -> First byte looks like HTTP -> Read request -> Found Host header -> HttpOnHttpsPortErrorHandler -> Close connect.
 
-If handler nil -> 🔄302 Redirect -> Close connect.  
+First byte looks like HTTP -> Read request -> Found Host header -> ⚪HttpOnHttpsPortErrorHandler or 🟡302 Redirect -> Close.
 
 ### Client HTTP/???
-Accept hijacking net.Conn.Read -> First byte looks like HTTP -> Read request -> Missing Host header -> Close connect.  
 
+First byte looks like HTTP -> Read request -> ⛔Missing Host header -> Close.
 
-***
+---
+
 ## Option Example
 
 #### HttpOnHttpsPortErrorHandler
+
 ```go
-// Default
+// 307 Temporary Redirect
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	hlfhr.RedirectToHttps(w, r, 302)
+	hlfhr.RedirectToHttps(w, r, 307)
 })
 ```
+
 ```go
 // Check Host Header
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -129,6 +140,7 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 	}
 })
 ```
+
 ```go
 // Script Redirect
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -137,35 +149,32 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 	io.WriteString(w, "<script> location.protocol = 'https:' </script>")
 })
 ```
-```go
-// Keep Alive
-srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Connection", "keep-alive")
-	w.WriteHeader(400)
-	io.WriteString(w, "Hello hlfhr")
-})
-```
 
-***
+---
+
 ## Feature Example
 
-#### New  
+#### New
+
 ```go
 srv := hlfhr.New(&http.Server{})
 ```
 
-#### NewServer  
+#### NewServer
+
 ```go
 srv := hlfhr.NewServer(&http.Server{})
 ```
 
 #### Server.IsShuttingDown
+
 ```go
 var srv *hlfhr.Server
 isShuttingDown := srv.IsShuttingDown()
 ```
 
 #### Server.NewListener
+
 ```go
 var l net.Listener
 var srv *http.Server
@@ -173,6 +182,7 @@ l = hlfhr.New(srv).NewListener(l)
 ```
 
 #### NewListener
+
 ```go
 var l net.Listener
 var srv *http.Server
@@ -181,50 +191,41 @@ l = hlfhr.NewListener(c, srv, h)
 ```
 
 #### IsMyListener
+
 ```go
 var l net.Listener
 isHlfhrListener := hlfhr.IsMyListener(l)
 ```
 
-#### NewConn
-```go
-var c net.Conn
-var srv *http.Server
-var h http.Handler
-c = hlfhr.NewConn(c, srv, h)
-```
-
 #### IsMyConn
+
 ```go
 var c net.Conn
 isHlfhrConn := hlfhr.IsMyConn(c)
 ```
 
 #### NewResponse
+
 ```go
 resp := hlfhr.NewResponse()
 ```
 
 #### NewResponseWriter
+
 ```go
 var c net.Conn
 w := hlfhr.NewResponseWriter(c, nil)
-hw := http.ResponseWriter(w)
-```
-
-#### http.NewResponseController
-```go
-var w http.ResponseWriter
-rc := http.NewResponseController(w)
 ```
 
 #### Redirect
+
 ```go
 var w http.ResponseWriter
 hlfhr.Redirect(w, 302, "https://example.com/")
 ```
 
 #### RedirectToHttps
+
 ```go
 var w http.ResponseWriter
 var r *http.Request
@@ -232,6 +233,7 @@ hlfhr.RedirectToHttps(w, r, 302)
 ```
 
 #### SplitHostnamePort
+
 ```go
 hostname, port := hlfhr.SplitHostnamePort("[::1]:5678")
 // hostname: [::1]
@@ -239,42 +241,49 @@ hostname, port := hlfhr.SplitHostnamePort("[::1]:5678")
 ```
 
 #### Hostname
+
 ```go
 hostname := hlfhr.Hostname("[::1]:5678")
 // hostname: [::1]
 ```
 
 #### Port
+
 ```go
 port := hlfhr.Port("[::1]:5678")
 // port: 5678
 ```
 
 #### HostnameAppendPort
+
 ```go
 Host := hlfhr.HostnameAppendPort("[::1]", "5678")
 // Host: [::1]:5678
 ```
 
 #### ReplaceHostname
+
 ```go
 Host := hlfhr.ReplaceHostname("[::1]:5678", "localhost")
 // Host: localhost:5678
 ```
 
 #### ReplacePort
+
 ```go
 Host := hlfhr.ReplacePort("[::1]:5678", "7890")
 // Host: [::1]:7890
 ```
 
 #### Ipv6CutPrefixSuffix
+
 ```go
 v6 := hlfhr.Ipv6CutPrefixSuffix("[::1]")
 // v6: ::1
 ```
 
+---
 
-***
 ## License
-[BSD-3-clause license](LICENSE.txt)  
+
+[BSD-3-clause license](LICENSE.txt)
