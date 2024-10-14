@@ -75,16 +75,13 @@ Run:
 ```
 git clone https://github.com/bddjr/hlfhr
 cd hlfhr
-cd example
-
-go build
-./example
+./run.sh
 ```
 
 ```
 
   test:
-  cmd /C curl -v -k -L http://localhost:5678/
+  curl -v -k -L http://localhost:5678/
 
 2024/06/20 11:50:09 http: TLS handshake error from [::1]:60470: hlfhr: Client sent an HTTP request to an HTTPS server
 ```
