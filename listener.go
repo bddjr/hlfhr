@@ -35,11 +35,10 @@ func (l *Listener) Accept() (c net.Conn, err error) {
 	c, err = l.Listener.Accept()
 	if err == nil {
 		// Hijacking net.Conn
-		c = NewConn(
-			c,
-			l.HttpServer,
-			l.HttpOnHttpsPortErrorHandler,
-		)
+		c = &conn{
+			Conn: c,
+			l:    l,
+		}
 	}
 	return
 }

@@ -10,66 +10,61 @@ import (
 )
 
 var ErrHttpOnHttpsPort = errors.New("hlfhr: Client sent an HTTP request to an HTTPS server")
+var ErrMissingRequiredHostHeader = errors.New("missing required Host header")
 
-type Conn struct {
-	net.Conn
+// var ErrUnsupportedProtocolVersion = errors.New("unsupported protocol version")
 
-	HttpServer                  *http.Server
-	HttpOnHttpsPortErrorHandler http.Handler
-
+type conn struct {
 	isNotFirstRead bool
 	isHandlingHttp bool
+	net.Conn
+	l *Listener
 }
 
 func IsMyConn(inner net.Conn) bool {
-	_, ok := inner.(*Conn)
+	_, ok := inner.(*conn)
 	return ok
 }
 
-func NewConn(
-	inner net.Conn,
-	httpServer *http.Server,
-	httpOnHttpsPortErrorHandler http.Handler,
-) net.Conn {
-	c, ok := inner.(*Conn)
-	if !ok {
-		c = &Conn{Conn: inner}
-	}
-	c.HttpServer = httpServer
-	c.HttpOnHttpsPortErrorHandler = httpOnHttpsPortErrorHandler
-	return c
-}
-
-func (c *Conn) logf(format string, args ...any) {
-	if c.HttpServer.ErrorLog != nil {
-		c.HttpServer.ErrorLog.Printf(format, args...)
+func (c *conn) logf(format string, args ...any) {
+	if el := c.l.HttpServer.ErrorLog; el != nil {
+		el.Printf(format, args...)
 	} else {
 		log.Printf(format, args...)
 	}
 }
 
-func (c *Conn) setReadHeaderTimeout() error {
-	if c.HttpServer != nil && c.HttpServer.ReadHeaderTimeout > 0 {
-		return c.Conn.SetReadDeadline(time.Now().Add(c.HttpServer.ReadHeaderTimeout))
+func (c *conn) setReadHeaderTimeout() error {
+	if srv := c.l.HttpServer; srv != nil {
+		t := srv.ReadHeaderTimeout
+		if t > 0 {
+			return c.Conn.SetReadDeadline(time.Now().Add(t))
+		}
 	}
 	return c.setReadTimeout()
 }
 
-func (c *Conn) setReadTimeout() error {
-	if c.HttpServer != nil && c.HttpServer.ReadTimeout > 0 {
-		return c.Conn.SetReadDeadline(time.Now().Add(c.HttpServer.ReadTimeout))
+func (c *conn) setReadTimeout() error {
+	if srv := c.l.HttpServer; srv != nil {
+		t := srv.ReadTimeout
+		if t > 0 {
+			return c.Conn.SetReadDeadline(time.Now().Add(t))
+		}
 	}
 	return c.Conn.SetReadDeadline(time.Time{})
 }
 
-func (c *Conn) setWriteTimeout() error {
-	if c.HttpServer != nil && c.HttpServer.WriteTimeout > 0 {
-		return c.Conn.SetWriteDeadline(time.Now().Add(c.HttpServer.WriteTimeout))
+func (c *conn) setWriteTimeout() error {
+	if srv := c.l.HttpServer; srv != nil {
+		t := srv.WriteTimeout
+		if t > 0 {
+			return c.Conn.SetWriteDeadline(time.Now().Add(t))
+		}
 	}
 	return c.Conn.SetWriteDeadline(time.Time{})
 }
 
-func (c *Conn) handleHttp(rBuf *bufio.Reader, chhr *connHttpHeaderReader) {
+func (c *conn) handleHttp(rBuf *bufio.Reader, chhr *connHttpHeaderReader) {
 	// HTTP/1.1
 	defer c.Conn.Close()
 
@@ -78,30 +73,27 @@ func (c *Conn) handleHttp(rBuf *bufio.Reader, chhr *connHttpHeaderReader) {
 	chhr.isReadingHttpHeader = true
 	r, err := http.ReadRequest(rBuf)
 	chhr.isReadingHttpHeader = false
-	if err != nil {
-		c.logf("hlfhr: Read error from %s: %v", c.Conn.RemoteAddr(), err)
-		return
+	if err == nil && r.Host == "" {
+		err = ErrMissingRequiredHostHeader
 	}
-	if r.Host == "" {
-		// Missing Host header
+	if err != nil {
+		c.logf("hlfhr: Read request error from %s: %v", c.Conn.RemoteAddr(), err)
 		return
 	}
 
 	// Response
 	w := NewResponseWriter(c.Conn, nil)
 
-	if c.HttpOnHttpsPortErrorHandler == nil {
-		// Redirect
-		RedirectToHttps(w, r, 302)
-	} else {
+	if h := c.l.HttpOnHttpsPortErrorHandler; h != nil {
 		// Handler
 		w.Resp.Request = r
 		r.Response = w.Resp
 		c.setReadTimeout()
-		c.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
-		delete(w.Resp.Header, "Connection")
-		delete(w.Resp.Header, "Keep-Alive")
+		h.ServeHTTP(w, r)
 		w.Resp.Close = true
+	} else {
+		// Redirect
+		RedirectToHttps(w, r, 302)
 	}
 
 	// Write
@@ -116,22 +108,16 @@ func (c *Conn) handleHttp(rBuf *bufio.Reader, chhr *connHttpHeaderReader) {
 	}
 }
 
-func (c *Conn) Read(b []byte) (int, error) {
+func (c *conn) Read(b []byte) (int, error) {
 	if c.isNotFirstRead {
-		if c.isHandlingHttp {
-			c.logf("hlfhr isHandlingHttp read")
-		}
 		return c.Conn.Read(b)
 	}
 	c.isNotFirstRead = true
 
-	chhr := &connHttpHeaderReader{
-		c:          c.Conn,
-		httpServer: c.HttpServer,
-	}
+	chhr := &connHttpHeaderReader{c: c}
 
 	rBuf := bufio.NewReaderSize(chhr, len(b)) // Size: 576
-	if len(b) < rBuf.Size() {
+	if len(b) != rBuf.Size() {
 		// HTTPS should work even if the standard library is modified
 		return c.Conn.Read(b)
 	}
@@ -159,7 +145,7 @@ func (c *Conn) Read(b []byte) (int, error) {
 	return rBuf.Read(b)
 }
 
-func (c *Conn) Close() error {
+func (c *conn) Close() error {
 	if c.isHandlingHttp {
 		return nil
 	}
