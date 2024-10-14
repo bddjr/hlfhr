@@ -7,22 +7,40 @@ import (
 
 type connHttpHeaderReader struct {
 	isReadingHttpHeader bool
+	hasByteBuf          bool
+	byteBuf             byte
 	c                   *conn
 	max                 int
 }
 
-func (r *connHttpHeaderReader) resetMaxHeaderBytes(Min int) {
+func (r *connHttpHeaderReader) resetMaxHeaderBytes() {
 	if srv := r.c.l.HttpServer; srv != nil {
 		mhb := srv.MaxHeaderBytes
 		if mhb != 0 {
-			r.max = max(mhb, Min)
+			r.max = mhb
 			return
 		}
 	}
 	r.max = http.DefaultMaxHeaderBytes
 }
 
+func (r *connHttpHeaderReader) peekByte() (byte, bool, error) {
+	b := make([]byte, 1)
+	n, err := r.c.Conn.Read(b)
+	if err != nil || n < 1 {
+		return 0, false, err
+	}
+	r.byteBuf = b[0]
+	r.hasByteBuf = true
+	return b[0], true, nil
+}
+
 func (r *connHttpHeaderReader) Read(b []byte) (int, error) {
+	if r.hasByteBuf {
+		r.hasByteBuf = false
+		b[0] = r.byteBuf
+		return 1, nil
+	}
 	if !r.isReadingHttpHeader {
 		return r.c.Conn.Read(b)
 	}

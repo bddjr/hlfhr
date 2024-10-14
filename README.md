@@ -130,14 +130,17 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 ```go
 // Check Host Header
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	switch hlfhr.Hostname(r.Host) {
+	hostname, port := hlfhr.SplitHostnamePort(r.Host)
+	switch hostname {
 	case "localhost":
-		hlfhr.RedirectToHttps(w, r, 302)
+		//
 	case "www.localhost", "127.0.0.1":
-		hlfhr.Redirect(w, 302, "https://"+hlfhr.ReplaceHostname(r.Host, "localhost")+r.URL.RequestURI())
+		r.Host = hlfhr.HostnameAppendPort("localhost", port)
 	default:
 		w.WriteHeader(421)
+		return
 	}
+	hlfhr.RedirectToHttps(w, r, 302)
 })
 ```
 
