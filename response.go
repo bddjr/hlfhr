@@ -46,6 +46,10 @@ func (rw *ResponseWriter) Write(b []byte) (int, error) {
 	return rw.BodyBuf.Write(b)
 }
 
+func (rw *ResponseWriter) WriteString(s string) (int, error) {
+	return rw.BodyBuf.WriteString(s)
+}
+
 func (rw *ResponseWriter) WriteHeader(statusCode int) {
 	rw.Resp.StatusCode = statusCode
 }
