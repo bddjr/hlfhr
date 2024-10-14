@@ -43,6 +43,8 @@ func testPrint(srv *hlfhr.Server) {
 	if runtime.GOOS == "windows" {
 		p += "cmd /C "
 	}
-	p = fmt.Sprint(p, "curl -v -k -L http://localhost", srv.Addr, "/\n")
+	p += "curl -v -k -L http://localhost"
+	p += srv.Addr
+	p += "/\n"
 	fmt.Println(p)
 }

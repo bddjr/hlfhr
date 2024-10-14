@@ -27,7 +27,8 @@ func IsMyConn(inner net.Conn) bool {
 }
 
 func (c *conn) logf(format string, args ...any) {
-	if el := c.l.HttpServer.ErrorLog; el != nil {
+	el := c.l.HttpServer.ErrorLog
+	if el != nil {
 		el.Printf(format, args...)
 	} else {
 		log.Printf(format, args...)
@@ -35,7 +36,8 @@ func (c *conn) logf(format string, args ...any) {
 }
 
 func (c *conn) setReadHeaderTimeout() error {
-	if srv := c.l.HttpServer; srv != nil {
+	srv := c.l.HttpServer
+	if srv != nil {
 		t := srv.ReadHeaderTimeout
 		if t > 0 {
 			return c.Conn.SetReadDeadline(time.Now().Add(t))
@@ -45,7 +47,8 @@ func (c *conn) setReadHeaderTimeout() error {
 }
 
 func (c *conn) setReadTimeout() error {
-	if srv := c.l.HttpServer; srv != nil {
+	srv := c.l.HttpServer
+	if srv != nil {
 		t := srv.ReadTimeout
 		if t > 0 {
 			return c.Conn.SetReadDeadline(time.Now().Add(t))
@@ -55,7 +58,8 @@ func (c *conn) setReadTimeout() error {
 }
 
 func (c *conn) setWriteTimeout() error {
-	if srv := c.l.HttpServer; srv != nil {
+	srv := c.l.HttpServer
+	if srv != nil {
 		t := srv.WriteTimeout
 		if t > 0 {
 			return c.Conn.SetWriteDeadline(time.Now().Add(t))
@@ -101,7 +105,8 @@ func (c *conn) handleHttp(chhr *connHttpHeaderReader) {
 
 	// Write
 	c.setWriteTimeout()
-	if err := w.Flush(); err != nil {
+	err = w.Flush()
+	if err != nil {
 		c.logf("hlfhr: Write error for %s: %v", c.Conn.RemoteAddr(), err)
 	}
 }
