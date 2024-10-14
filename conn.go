@@ -27,12 +27,15 @@ func IsMyConn(inner net.Conn) bool {
 }
 
 func (c *conn) logf(format string, args ...any) {
-	el := c.l.HttpServer.ErrorLog
-	if el != nil {
-		el.Printf(format, args...)
-	} else {
-		log.Printf(format, args...)
+	srv := c.l.HttpServer
+	if srv != nil {
+		el := srv.ErrorLog
+		if el != nil {
+			el.Printf(format, args...)
+			return
+		}
 	}
+	log.Printf(format, args...)
 }
 
 func (c *conn) setReadHeaderTimeout() error {
