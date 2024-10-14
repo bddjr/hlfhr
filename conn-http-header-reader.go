@@ -40,6 +40,7 @@ func (r *connHttpHeaderReader) Read(b []byte) (int, error) {
 	if r.hasByteBuf {
 		r.hasByteBuf = false
 		b[0] = r.byteBuf
+		r.max--
 		return 1, nil
 	}
 	if !r.isReadingHttpHeader {
