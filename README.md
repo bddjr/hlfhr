@@ -103,7 +103,7 @@ Accept hijacking net.Conn.Read -> First byte looks like HTTP -> Read request -> 
 If handler nil -> 🔄302 Redirect -> Close connect.  
 
 ### Client HTTP/???
-Accept hijacking net.Conn.Read -> First byte looks like HTTP -> Read request -> Missing Host header -> ❌400 Bad Request -> Close connect.  
+Accept hijacking net.Conn.Read -> First byte looks like HTTP -> Read request -> Missing Host header -> Close connect.  
 
 
 ***

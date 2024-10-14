@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
+	"log"
 	"net"
 	"net/http"
 	"time"
@@ -18,10 +18,8 @@ type Conn struct {
 	HttpServer                  *http.Server
 	HttpOnHttpsPortErrorHandler http.Handler
 
-	maxHeaderBytes int
-
-	isNotFirstRead      bool
-	isReadingHttpHeader bool
+	isNotFirstRead bool
+	isHandlingHttp bool
 }
 
 func IsMyConn(inner net.Conn) bool {
@@ -43,11 +41,11 @@ func NewConn(
 	return c
 }
 
-func (c *Conn) resetMaxHeaderBytes(Min int) {
-	if c.HttpServer != nil && c.HttpServer.MaxHeaderBytes != 0 {
-		c.maxHeaderBytes = max(c.HttpServer.MaxHeaderBytes, Min)
+func (c *Conn) logf(format string, args ...any) {
+	if c.HttpServer.ErrorLog != nil {
+		c.HttpServer.ErrorLog.Printf(format, args...)
 	} else {
-		c.maxHeaderBytes = http.DefaultMaxHeaderBytes
+		log.Printf(format, args...)
 	}
 }
 
@@ -79,68 +77,28 @@ func (c *Conn) setWriteTimeout() error {
 	return c.Conn.SetWriteDeadline(time.Time{})
 }
 
-func (c *Conn) Read(b []byte) (int, error) {
-	if c.isNotFirstRead {
-		if !c.isReadingHttpHeader {
-			return c.Conn.Read(b)
-		}
-		if c.maxHeaderBytes <= 0 {
-			return 0, http.ErrHeaderTooLong
-		}
-		if len(b) > c.maxHeaderBytes {
-			b = b[:c.maxHeaderBytes]
-		}
-		n, err := c.Conn.Read(b)
-		c.maxHeaderBytes -= n
-		return n, err
-	}
-	c.isNotFirstRead = true
-
-	rBuf := bufio.NewReaderSize(c, len(b)) // Size: 576
-	if len(b) < rBuf.Size() {
-		// HTTPS should work even if the standard library is modified
-		return c.Conn.Read(b)
-	}
-
-	// Read 1 Byte Header
-	{
-		c.resetMaxHeaderBytes(len(b))
-		c.isReadingHttpHeader = true
-		rb1, err := rBuf.Peek(1)
-		c.isReadingHttpHeader = false
-		if err != nil {
-			return 0, err
-		}
-		switch rb1[0] {
-		case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
-			// Looks like HTTP.
-		default:
-			// Not looks like HTTP.
-			// TLS handshake: 0x16
-			return rBuf.Read(b)
-		}
-	}
-
+func (c *Conn) handleHttp(rBuf *bufio.Reader, chhr *connHttpHeaderReader) {
 	// HTTP/1.1
 	defer c.Conn.Close()
 	c.setReadHeaderTimeout()
 	for {
 		// Read HTTP header
-		c.isReadingHttpHeader = true
+		chhr.isReadingHttpHeader = true
 		r, err := http.ReadRequest(rBuf)
-		c.isReadingHttpHeader = false
+		chhr.isReadingHttpHeader = false
 		if err != nil {
-			return 0, fmt.Errorf("hlfhr read: %s", err)
+			c.logf("hlfhr: Read error from %s: %v", c.Conn.RemoteAddr(), err)
+			return
+		}
+		if r.Host == "" {
+			// Missing Host header
+			return
 		}
 
 		// Response
 		w := NewResponseWriter(c.Conn, nil)
 
-		if r.Host == "" {
-			// Missing Host header
-			w.WriteHeader(400)
-			io.WriteString(w, "Missing Host header.")
-		} else if c.HttpOnHttpsPortErrorHandler == nil {
+		if c.HttpOnHttpsPortErrorHandler == nil {
 			// Redirect
 			RedirectToHttps(w, r, 302)
 		} else {
@@ -152,7 +110,7 @@ func (c *Conn) Read(b []byte) (int, error) {
 			c.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
 			if w.Hijacked {
 				// Close
-				return 0, ErrHttpOnHttpsPort
+				return
 			}
 			if c.HttpServer.IdleTimeout != 0 && w.Header().Get("Connection") == "keep-alive" && w.Header().Get("Keep-Alive") == "" {
 				w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", c.HttpServer.IdleTimeout.Seconds()))
@@ -162,16 +120,67 @@ func (c *Conn) Read(b []byte) (int, error) {
 		// Write
 		c.setWriteTimeout()
 		if err := w.Flush(); err != nil {
-			return 0, fmt.Errorf("hlfhr write: %s", err)
+			c.logf("hlfhr: Write error for %s: %v", c.Conn.RemoteAddr(), err)
+			return
 		}
 		if w.Resp.Close || w.Header().Get("Connection") == "close" {
 			// Close
-			return 0, ErrHttpOnHttpsPort
+			return
 		}
 
 		// Keep Alive
 		rBuf.Reset(c)
-		c.resetMaxHeaderBytes(len(b))
+		chhr.resetMaxHeaderBytes(rBuf.Size())
 		c.setKeepAliveTimeout()
 	}
+}
+
+func (c *Conn) Read(b []byte) (int, error) {
+	if c.isNotFirstRead {
+		if c.isHandlingHttp {
+			c.logf("hlfhr isHandlingHttp read")
+		}
+		return c.Conn.Read(b)
+	}
+	c.isNotFirstRead = true
+
+	chhr := &connHttpHeaderReader{
+		c:          c.Conn,
+		httpServer: c.HttpServer,
+	}
+
+	rBuf := bufio.NewReaderSize(chhr, len(b)) // Size: 576
+	if len(b) < rBuf.Size() {
+		// HTTPS should work even if the standard library is modified
+		return c.Conn.Read(b)
+	}
+
+	// Read 1 Byte Header
+	chhr.resetMaxHeaderBytes(len(b))
+	chhr.isReadingHttpHeader = true
+	rb1, err := rBuf.Peek(1)
+	chhr.isReadingHttpHeader = false
+	if err != nil {
+		return 0, err
+	}
+	if len(rb1) >= 1 {
+		switch rb1[0] {
+		case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
+			// Looks like HTTP.
+			c.isHandlingHttp = true
+			go c.handleHttp(rBuf, chhr)
+			return 0, ErrHttpOnHttpsPort
+		}
+	}
+
+	// Not looks like HTTP.
+	// TLS handshake: 0x16
+	return rBuf.Read(b)
+}
+
+func (c *Conn) Close() error {
+	if c.isHandlingHttp {
+		return nil
+	}
+	return c.Conn.Close()
 }
