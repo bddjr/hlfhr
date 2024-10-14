@@ -100,11 +100,6 @@ func (c *conn) handleHttp(rBuf *bufio.Reader, chhr *connHttpHeaderReader) {
 	c.setWriteTimeout()
 	if err := w.Flush(); err != nil {
 		c.logf("hlfhr: Write error for %s: %v", c.Conn.RemoteAddr(), err)
-		return
-	}
-	if w.Resp.Close {
-		// Close
-		return
 	}
 }
 
