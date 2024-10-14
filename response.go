@@ -1,7 +1,6 @@
 package hlfhr
 
 import (
-	"bufio"
 	"bytes"
 	"io"
 	"net"
@@ -10,15 +9,15 @@ import (
 )
 
 func NewResponse() *http.Response {
-	h := make(http.Header)
-	h.Set("Date", time.Now().UTC().Format(http.TimeFormat))
-	h.Set("Connection", "close")
 	return &http.Response{
 		ProtoMajor: 1,
 		ProtoMinor: 1,
 		Proto:      "HTTP/1.1",
 		StatusCode: 400,
-		Header:     h,
+		Close:      true,
+		Header: http.Header{
+			"Date": []string{time.Now().UTC().Format(http.TimeFormat)},
+		},
 	}
 }
 
@@ -26,10 +25,6 @@ type ResponseWriter struct {
 	Resp    *http.Response
 	Conn    net.Conn
 	BodyBuf *bytes.Buffer
-
-	HijackRBuf *bufio.Reader
-	HijackRW   *bufio.ReadWriter
-	Hijacked   bool
 }
 
 func NewResponseWriter(conn net.Conn, resp *http.Response) *ResponseWriter {
@@ -55,39 +50,11 @@ func (rw *ResponseWriter) WriteHeader(statusCode int) {
 	rw.Resp.StatusCode = statusCode
 }
 
-// http.ResponseController
-
 // Flush flushes buffered data to the client.
 func (rw *ResponseWriter) Flush() error {
 	rw.Resp.ContentLength = int64(rw.BodyBuf.Len())
 	rw.Resp.Body = io.NopCloser(rw.BodyBuf)
 	return rw.Resp.Write(rw.Conn)
-}
-
-func (rw *ResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	rw.Hijacked = true
-	if rw.HijackRW == nil {
-		if rw.HijackRBuf == nil {
-			rw.HijackRBuf = bufio.NewReader(rw.Conn)
-		}
-		rw.HijackRW = bufio.NewReadWriter(
-			rw.HijackRBuf,
-			bufio.NewWriter(rw.Conn),
-		)
-	}
-	return rw.Conn, rw.HijackRW, nil
-}
-
-func (rw *ResponseWriter) SetReadDeadline(t time.Time) error {
-	return rw.Conn.SetReadDeadline(t)
-}
-
-func (rw *ResponseWriter) SetWriteDeadline(t time.Time) error {
-	return rw.Conn.SetWriteDeadline(t)
-}
-
-func (rw *ResponseWriter) EnableFullDuplex() error {
-	return nil
 }
 
 // Redirect tools

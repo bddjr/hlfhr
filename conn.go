@@ -3,7 +3,6 @@ package hlfhr
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -49,13 +48,6 @@ func (c *Conn) logf(format string, args ...any) {
 	}
 }
 
-func (c *Conn) setKeepAliveTimeout() error {
-	if c.HttpServer != nil && c.HttpServer.IdleTimeout > 0 {
-		return c.Conn.SetReadDeadline(time.Now().Add(c.HttpServer.IdleTimeout))
-	}
-	return c.setReadTimeout()
-}
-
 func (c *Conn) setReadHeaderTimeout() error {
 	if c.HttpServer != nil && c.HttpServer.ReadHeaderTimeout > 0 {
 		return c.Conn.SetReadDeadline(time.Now().Add(c.HttpServer.ReadHeaderTimeout))
@@ -80,58 +72,47 @@ func (c *Conn) setWriteTimeout() error {
 func (c *Conn) handleHttp(rBuf *bufio.Reader, chhr *connHttpHeaderReader) {
 	// HTTP/1.1
 	defer c.Conn.Close()
+
+	// Read HTTP header
 	c.setReadHeaderTimeout()
-	for {
-		// Read HTTP header
-		chhr.isReadingHttpHeader = true
-		r, err := http.ReadRequest(rBuf)
-		chhr.isReadingHttpHeader = false
-		if err != nil {
-			c.logf("hlfhr: Read error from %s: %v", c.Conn.RemoteAddr(), err)
-			return
-		}
-		if r.Host == "" {
-			// Missing Host header
-			return
-		}
+	chhr.isReadingHttpHeader = true
+	r, err := http.ReadRequest(rBuf)
+	chhr.isReadingHttpHeader = false
+	if err != nil {
+		c.logf("hlfhr: Read error from %s: %v", c.Conn.RemoteAddr(), err)
+		return
+	}
+	if r.Host == "" {
+		// Missing Host header
+		return
+	}
 
-		// Response
-		w := NewResponseWriter(c.Conn, nil)
+	// Response
+	w := NewResponseWriter(c.Conn, nil)
 
-		if c.HttpOnHttpsPortErrorHandler == nil {
-			// Redirect
-			RedirectToHttps(w, r, 302)
-		} else {
-			// Handler
-			w.Resp.Request = r
-			r.Response = w.Resp
-			w.HijackRBuf = rBuf
-			c.setReadTimeout()
-			c.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
-			if w.Hijacked {
-				// Close
-				return
-			}
-			if c.HttpServer.IdleTimeout != 0 && w.Header().Get("Connection") == "keep-alive" && w.Header().Get("Keep-Alive") == "" {
-				w.Header().Set("Keep-Alive", fmt.Sprint("timeout=", c.HttpServer.IdleTimeout.Seconds()))
-			}
-		}
+	if c.HttpOnHttpsPortErrorHandler == nil {
+		// Redirect
+		RedirectToHttps(w, r, 302)
+	} else {
+		// Handler
+		w.Resp.Request = r
+		r.Response = w.Resp
+		c.setReadTimeout()
+		c.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+		delete(w.Resp.Header, "Connection")
+		delete(w.Resp.Header, "Keep-Alive")
+		w.Resp.Close = true
+	}
 
-		// Write
-		c.setWriteTimeout()
-		if err := w.Flush(); err != nil {
-			c.logf("hlfhr: Write error for %s: %v", c.Conn.RemoteAddr(), err)
-			return
-		}
-		if w.Resp.Close || w.Header().Get("Connection") == "close" {
-			// Close
-			return
-		}
-
-		// Keep Alive
-		rBuf.Reset(c)
-		chhr.resetMaxHeaderBytes(rBuf.Size())
-		c.setKeepAliveTimeout()
+	// Write
+	c.setWriteTimeout()
+	if err := w.Flush(); err != nil {
+		c.logf("hlfhr: Write error for %s: %v", c.Conn.RemoteAddr(), err)
+		return
+	}
+	if w.Resp.Close {
+		// Close
+		return
 	}
 }
 
