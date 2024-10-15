@@ -6,11 +6,10 @@ import (
 )
 
 type connHttpHeaderReader struct {
-	isReadingHttpHeader bool
-	hasByteBuf          bool
-	byteBuf             byte
-	c                   *conn
-	max                 int
+	isReadingBody bool
+	firstByte     byte
+	c             *conn
+	max           int
 }
 
 func (r *connHttpHeaderReader) resetMaxHeaderBytes() {
@@ -25,34 +24,33 @@ func (r *connHttpHeaderReader) resetMaxHeaderBytes() {
 	r.max = http.DefaultMaxHeaderBytes
 }
 
-func (r *connHttpHeaderReader) peekByte() (byte, bool, error) {
-	b := make([]byte, 1)
-	n, err := r.c.Conn.Read(b)
-	if err != nil || n < 1 {
-		return 0, false, err
-	}
-	r.byteBuf = b[0]
-	r.hasByteBuf = true
-	return b[0], true, nil
-}
-
 func (r *connHttpHeaderReader) Read(b []byte) (int, error) {
-	if r.hasByteBuf {
-		r.hasByteBuf = false
-		b[0] = r.byteBuf
-		r.max--
-		return 1, nil
-	}
-	if !r.isReadingHttpHeader {
+	if r.isReadingBody || len(b) == 0 {
 		return r.c.Conn.Read(b)
 	}
+
 	if r.max <= 0 {
 		return 0, io.EOF
 	}
+
+	offset := 0
+
+	if r.firstByte != 0 {
+		b[0] = r.firstByte
+		r.firstByte = 0
+		r.max--
+		if len(b) == 1 || r.max <= 0 {
+			return 1, nil
+		}
+		b = b[1:]
+		offset++
+	}
+
 	if len(b) > r.max {
 		b = b[:r.max]
 	}
+
 	n, err := r.c.Conn.Read(b)
 	r.max -= n
-	return n, err
+	return n + offset, err
 }

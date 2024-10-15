@@ -71,18 +71,19 @@ func (c *conn) setWriteTimeout() error {
 	return c.Conn.SetWriteDeadline(time.Time{})
 }
 
-func (c *conn) handleHttp(chhr *connHttpHeaderReader) {
+func (c *conn) handleHttp(firstByte byte) {
 	// HTTP/1.1
 	defer c.Conn.Close()
 
 	// Read HTTP header
-	rBuf := bufio.NewReader(chhr)
+	chhr := connHttpHeaderReader{
+		firstByte: firstByte,
+		c:         c,
+	}
+	chhr.resetMaxHeaderBytes()
 	c.setReadHeaderTimeout()
 
-	chhr.isReadingHttpHeader = true
-	r, err := http.ReadRequest(rBuf)
-	chhr.isReadingHttpHeader = false
-
+	r, err := http.ReadRequest(bufio.NewReader(&chhr))
 	if err == nil && r.Host == "" {
 		err = ErrMissingRequiredHostHeader
 	}
@@ -98,6 +99,7 @@ func (c *conn) handleHttp(chhr *connHttpHeaderReader) {
 		// Handler
 		w.Resp.Request = r
 		r.Response = w.Resp
+		chhr.isReadingBody = true
 		c.setReadTimeout()
 		h.ServeHTTP(w, r)
 		w.Resp.Close = true
@@ -115,38 +117,34 @@ func (c *conn) handleHttp(chhr *connHttpHeaderReader) {
 }
 
 func (c *conn) Read(b []byte) (int, error) {
-	if c.isNotFirstRead || len(b) < 1 {
+	if c.isNotFirstRead || len(b) == 0 {
 		return c.Conn.Read(b)
 	}
-	c.isNotFirstRead = true
-
-	chhr := &connHttpHeaderReader{c: c}
-	chhr.resetMaxHeaderBytes()
 
 	// Read 1 Byte Header
-	chhr.isReadingHttpHeader = true
-	firstByte, ok, err := chhr.peekByte()
-	chhr.isReadingHttpHeader = false
-
-	if !ok {
-		if err == nil {
-			// n < 1
-			c.isNotFirstRead = false
-		}
+	n, err := c.Conn.Read(b[:1])
+	if err != nil || n == 0 {
 		return 0, err
 	}
 
-	switch firstByte {
+	c.isNotFirstRead = true
+
+	switch b[0] {
 	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
 		// Looks like HTTP.
+		// GET, HEAD, POST PUT PATCH, OPTIONS, DELETE, CONNECT, TRACE
 		c.isHandlingHttp = true
-		go c.handleHttp(chhr)
+		go c.handleHttp(b[0])
 		return 0, ErrHttpOnHttpsPort
 	}
 
 	// Not looks like HTTP.
 	// TLS handshake: 0x16
-	return chhr.Read(b)
+	if len(b) > 1 {
+		n, err = c.Conn.Read(b[1:])
+		n++
+	}
+	return n, err
 }
 
 func (c *conn) Close() error {
