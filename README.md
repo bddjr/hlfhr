@@ -115,8 +115,8 @@ First byte looks like HTTP -> Read request -> ⛔Missing Host header -> Close.
 ### See
 
 - [curl](README_curl.md)
-- [conn.go](https://github.com/bddjr/hlfhr/blob/main/conn.go)
-- [conn-http-header-reader.go](https://github.com/bddjr/hlfhr/blob/main/conn-http-header-reader.go)
+- [conn.go](conn.go)
+- [conn-http-header-reader.go](conn-http-header-reader.go)
 
 ---
 
