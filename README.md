@@ -28,6 +28,7 @@ go get github.com/bddjr/hlfhr
 Example:
 
 ```go
+// Use srv.ListenAndServeTLS
 var srv *hlfhr.Server
 
 func main() {
@@ -48,6 +49,36 @@ func main() {
 ```
 
 ```go
+// Use srv.ServeTLS
+var l net.Listener
+var srv *hlfhr.Server
+
+func main() {
+	srv = hlfhr.New(&http.Server{
+		Addr: ":5678",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Write something...
+		}),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       10 * time.Second,
+	})
+
+	var err error
+	l, err = net.Listen("tcp", srv.Addr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer l.Close()
+
+	// Must use ServeTLS! For issue https://github.com/bddjr/hlfhr/issues/4
+	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
+	fmt.Println(err)
+}
+```
+
+```go
+// Use hlfhr.NewListener
 var l net.Listener
 var srv *http.Server
 
@@ -70,7 +101,8 @@ func main() {
 	defer l.Close()
 
 	// Use hlfhr.NewListener
-	l = hlfhr.NewListener(l, srv, nil)
+	var httpOnHttpsPortErrorHandler http.Handler = nil
+	l = hlfhr.NewListener(l, srv, httpOnHttpsPortErrorHandler)
 
 	// Must use ServeTLS! For issue https://github.com/bddjr/hlfhr/issues/4
 	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
