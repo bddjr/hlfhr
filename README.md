@@ -1,12 +1,6 @@
 # HTTPS Listener For HTTP Redirect
 
-This mod implements a feature by hijacking `net.Conn` :  
-If a user accesses an https port using http, the server returns 302 redirection.  
-The principle is similar to reverse proxy.
-
-这个 mod 通过劫持 `net.Conn` 实现了一个功能:  
-当用户使用 http 协议访问 https 端口时，服务器返回 302 重定向。  
-原理与反向代理相似。
+If client sent an HTTP request to an HTTPS server, returns [302 redirection](https://developer.mozilla.org/docs/Web/HTTP/Status/302), like [nginx](https://nginx.org)'s ["error_page 497"](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors).
 
 Related Issue:  
 [net/http: configurable error message for Client sent an HTTP request to an HTTPS server. #49310](https://github.com/golang/go/issues/49310)
@@ -18,6 +12,30 @@ Related Issue:
 ```
 go get github.com/bddjr/hlfhr
 ```
+
+---
+
+## Logic
+
+Hijacking ServeTLS -> Hijacking net.Listener.Accept -> Hijacking net.Conn
+
+### Client HTTPS
+
+First byte not looks like HTTP -> ✅Continue...
+
+### Client HTTP/1.1
+
+First byte looks like HTTP -> Read request -> Found Host header -> ⚪HttpOnHttpsPortErrorHandler or 🟡302 Redirect -> Close.
+
+### Client HTTP/???
+
+First byte looks like HTTP -> Read request -> ⛔Missing Host header -> Close.
+
+### See
+
+- [curl](README_curl.md)
+- [conn.go](conn.go)
+- [conn-http-header-reader.go](conn-http-header-reader.go)
 
 ---
 
@@ -118,38 +136,6 @@ cd hlfhr
 ./run.sh
 ```
 
-```
-
-  test:
-  curl -v -k -L http://localhost:5678/
-
-2024/06/20 11:50:09 http: TLS handshake error from [::1]:60470: hlfhr: Client sent an HTTP request to an HTTPS server
-```
-
----
-
-## Logic
-
-HTTPS Server Start -> Hijacking net.Listener.Accept -> Hijacking net.Conn
-
-### Client HTTPS
-
-First byte not looks like HTTP -> ✅Continue...
-
-### Client HTTP/1.1
-
-First byte looks like HTTP -> Read request -> Found Host header -> ⚪HttpOnHttpsPortErrorHandler or 🟡302 Redirect -> Close.
-
-### Client HTTP/???
-
-First byte looks like HTTP -> Read request -> ⛔Missing Host header -> Close.
-
-### See
-
-- [curl](README_curl.md)
-- [conn.go](conn.go)
-- [conn-http-header-reader.go](conn-http-header-reader.go)
-
 ---
 
 ## Option Example
@@ -243,19 +229,6 @@ var c net.Conn
 isHlfhrConn := hlfhr.IsMyConn(c)
 ```
 
-#### NewResponse
-
-```go
-resp := hlfhr.NewResponse()
-```
-
-#### NewResponseWriter
-
-```go
-var c net.Conn
-w := hlfhr.NewResponseWriter(c, nil)
-```
-
 #### Redirect
 
 ```go
@@ -320,6 +293,22 @@ Host := hlfhr.ReplacePort("[::1]:5678", "7890")
 v6 := hlfhr.Ipv6CutPrefixSuffix("[::1]")
 // v6: ::1
 ```
+
+---
+
+## Reference
+
+https://developer.mozilla.org/docs/Web/HTTP/Session  
+https://developer.mozilla.org/docs/Web/HTTP/Methods  
+https://developer.mozilla.org/docs/Web/HTTP/Redirections  
+https://developer.mozilla.org/docs/Web/HTTP/Headers/Connection
+
+https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors  
+https://github.com/golang/go/issues/49310
+
+"net/http"  
+"net"  
+"crypto/tls"
 
 ---
 

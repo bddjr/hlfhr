@@ -9,13 +9,10 @@ import (
 	"time"
 )
 
-var ErrHttpOnHttpsPort = errors.New("hlfhr: Client sent an HTTP request to an HTTPS server")
-var ErrMissingRequiredHostHeader = errors.New("missing required Host header")
-
-// var ErrUnsupportedProtocolVersion = errors.New("unsupported protocol version")
+var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
 
 type conn struct {
-	isNotFirstRead bool
+	isReadingTLS   bool
 	isHandlingHttp bool
 	net.Conn
 	l *Listener
@@ -76,49 +73,47 @@ func (c *conn) handleHttp(firstByte byte) {
 	defer c.Conn.Close()
 
 	// Read HTTP header
-	chhr := connHttpHeaderReader{
-		firstByte: firstByte,
-		c:         c,
-	}
-	chhr.resetMaxHeaderBytes()
+	chhr := connHttpHeaderReader{c: c}
+	chhr.setStatusFirstByte(firstByte)
 	c.setReadHeaderTimeout()
 
 	r, err := http.ReadRequest(bufio.NewReader(&chhr))
-	if err == nil && r.Host == "" {
-		err = ErrMissingRequiredHostHeader
-	}
 	if err != nil {
 		c.logf("hlfhr: Read request error from %s: %v", c.Conn.RemoteAddr(), err)
 		return
 	}
+	if r.Host == "" {
+		c.logf("hlfhr: error form %s: missing required Host header", c.Conn.RemoteAddr())
+		return
+	}
 
 	// Response
-	w := NewResponseWriter(c.Conn, nil)
+	w := newResponse(c.Conn)
+	chhr.setStatusReadingBody()
+	c.setReadTimeout()
+	c.setWriteTimeout()
 
 	if h := c.l.HttpOnHttpsPortErrorHandler; h != nil {
 		// Handler
-		w.Resp.Request = r
-		r.Response = w.Resp
-		chhr.isReadingBody = true
-		c.setReadTimeout()
 		h.ServeHTTP(w, r)
-		w.Resp.Close = true
 	} else {
 		// Redirect
 		RedirectToHttps(w, r, 302)
 	}
 
 	// Write
-	c.setWriteTimeout()
-	err = w.Flush()
+	err = w.flush()
 	if err != nil {
 		c.logf("hlfhr: Write error for %s: %v", c.Conn.RemoteAddr(), err)
 	}
 }
 
 func (c *conn) Read(b []byte) (int, error) {
-	if c.isNotFirstRead || len(b) == 0 {
+	if c.isReadingTLS || len(b) == 0 {
 		return c.Conn.Read(b)
+	}
+	if c.isHandlingHttp {
+		return 0, net.ErrClosed
 	}
 
 	// Read 1 Byte Header
@@ -126,8 +121,6 @@ func (c *conn) Read(b []byte) (int, error) {
 	if err != nil || n == 0 {
 		return 0, err
 	}
-
-	c.isNotFirstRead = true
 
 	switch b[0] {
 	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
@@ -140,11 +133,12 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	// Not looks like HTTP.
 	// TLS handshake: 0x16
+	c.isReadingTLS = true
 	if len(b) > 1 {
 		n, err = c.Conn.Read(b[1:])
-		n++
+		return n + 1, err
 	}
-	return n, err
+	return 1, nil
 }
 
 func (c *conn) Close() error {

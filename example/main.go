@@ -17,8 +17,8 @@ func main() {
 	srv = hlfhr.New(&http.Server{
 		Addr:              ":5678",
 		Handler:           http.HandlerFunc(httpResponseHandle),
-		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       10 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       5 * time.Second,
 	})
 	// Then just use it like http.Server .
 
@@ -39,12 +39,9 @@ func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func testPrint(srv *hlfhr.Server) {
-	p := "\n  test:\n  "
+	fmt.Print("\n  test:\n  ")
 	if runtime.GOOS == "windows" {
-		p += "cmd /C "
+		fmt.Print("cmd /C ")
 	}
-	p += "curl -v -k -L http://localhost"
-	p += srv.Addr
-	p += "/\n"
-	fmt.Println(p)
+	fmt.Print("curl -v -k -L http://localhost", srv.Addr, "/\n\n")
 }

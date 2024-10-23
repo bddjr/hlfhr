@@ -5,52 +5,58 @@ import (
 	"net/http"
 )
 
+const chhrStatusReadingBody = -0x100
+
 type connHttpHeaderReader struct {
-	isReadingBody bool
-	firstByte     byte
-	c             *conn
-	max           int
+	c *conn
+
+	// max: >= 0
+	// first byte: -0x01 ~ -0xff
+	// reading body: -0x100
+	status int
 }
 
-func (r *connHttpHeaderReader) resetMaxHeaderBytes() {
+func (r *connHttpHeaderReader) setStatusMax() {
 	srv := r.c.l.HttpServer
 	if srv != nil {
-		mhb := srv.MaxHeaderBytes
-		if mhb != 0 {
-			r.max = mhb
+		r.status = srv.MaxHeaderBytes
+		if r.status > 0 {
 			return
 		}
 	}
-	r.max = http.DefaultMaxHeaderBytes
+	r.status = http.DefaultMaxHeaderBytes
+}
+
+func (r *connHttpHeaderReader) setStatusFirstByte(b byte) {
+	r.status = -int(b)
+}
+
+func (r *connHttpHeaderReader) setStatusReadingBody() {
+	r.status = chhrStatusReadingBody
 }
 
 func (r *connHttpHeaderReader) Read(b []byte) (int, error) {
-	if r.isReadingBody || len(b) == 0 {
-		return r.c.Conn.Read(b)
+	if r.status < 0 {
+		if r.status == chhrStatusReadingBody {
+			// reading body
+			return r.c.Conn.Read(b)
+		}
+		// first byte
+		b[0] = byte(-r.status)
+		r.setStatusMax()
+		r.status--
+		return 1, nil
 	}
 
-	if r.max <= 0 {
+	// max
+	if r.status == 0 {
 		return 0, io.EOF
 	}
 
-	offset := 0
-
-	if r.firstByte != 0 {
-		b[0] = r.firstByte
-		r.firstByte = 0
-		r.max--
-		if len(b) == 1 || r.max <= 0 {
-			return 1, nil
-		}
-		b = b[1:]
-		offset++
+	if len(b) > r.status {
+		b = b[:r.status]
 	}
-
-	if len(b) > r.max {
-		b = b[:r.max]
-	}
-
 	n, err := r.c.Conn.Read(b)
-	r.max -= n
-	return n + offset, err
+	r.status -= n
+	return n, err
 }
