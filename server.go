@@ -4,9 +4,10 @@
 package hlfhr
 
 import (
-	"context"
 	"net"
 	"net/http"
+	"reflect"
+	"sync/atomic"
 )
 
 type Server struct {
@@ -15,8 +16,6 @@ type Server struct {
 	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
 	// See https://github.com/bddjr/hlfhr#httponhttpsporterrorhandler
 	HttpOnHttpsPortErrorHandler http.Handler
-
-	shuttingDown bool
 }
 
 // New hlfhr Server
@@ -88,7 +87,7 @@ func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) er
 // ListenAndServeTLS always returns a non-nil error. After [Server.Shutdown] or
 // [Server.Close], the returned error is [http.ErrServerClosed].
 func (s *Server) ListenAndServeTLS(certFile string, keyFile string) error {
-	if s.shuttingDown {
+	if s.IsShuttingDown() {
 		return http.ErrServerClosed
 	}
 	addr := s.Addr
@@ -118,45 +117,8 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 	return srv.ListenAndServeTLS(certFile, keyFile)
 }
 
-// Close immediately closes all active net.Listeners and any
-// connections in state [http.StateNew], [http.StateActive], or [http.StateIdle]. For a
-// graceful shutdown, use [Server.Shutdown].
-//
-// Close does not attempt to close (and does not even know about)
-// any hijacked connections, such as WebSockets.
-//
-// Close returns any error returned from closing the [Server]'s
-// underlying Listener(s).
-func (s *Server) Close() error {
-	s.shuttingDown = true
-	return s.Server.Close()
-}
-
-// Shutdown gracefully shuts down the server without interrupting any
-// active connections. Shutdown works by first closing all open
-// listeners, then closing all idle connections, and then waiting
-// indefinitely for connections to return to idle and then shut down.
-// If the provided context expires before the shutdown is complete,
-// Shutdown returns the context's error, otherwise it returns any
-// error returned from closing the [Server]'s underlying Listener(s).
-//
-// When Shutdown is called, [http.Serve], [http.ListenAndServe], and
-// [ListenAndServeTLS] immediately return [http.ErrServerClosed]. Make sure the
-// program doesn't exit and waits instead for Shutdown to return.
-//
-// Shutdown does not attempt to close nor wait for hijacked
-// connections such as WebSockets. The caller of Shutdown should
-// separately notify such long-lived connections of shutdown and wait
-// for them to close, if desired. See [Server.RegisterOnShutdown] for a way to
-// register shutdown notification functions.
-//
-// Once Shutdown has been called on a server, it may not be reused;
-// future calls to methods such as Serve will return [http.ErrServerClosed].
-func (s *Server) Shutdown(ctx context.Context) error {
-	s.shuttingDown = true
-	return s.Server.Shutdown(ctx)
-}
-
 func (s *Server) IsShuttingDown() bool {
-	return s.shuttingDown
+	// Get private value
+	inShutdown := (*atomic.Bool)(reflect.ValueOf(s.Server).Elem().FieldByName("inShutdown").Addr().UnsafePointer())
+	return inShutdown.Load()
 }
