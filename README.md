@@ -41,10 +41,6 @@ First byte looks like HTTP -> Read request -> ⛔Missing Host header -> Close.
 
 ## Example
 
-[See example/main.go](example/main.go)
-
-Example:
-
 ```go
 // Use srv.ListenAndServeTLS
 var srv *hlfhr.Server
@@ -126,14 +122,6 @@ func main() {
 	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
 	fmt.Println(err)
 }
-```
-
-Run:
-
-```
-git clone https://github.com/bddjr/hlfhr
-cd hlfhr
-./run.sh
 ```
 
 ---
@@ -296,6 +284,16 @@ v6 := hlfhr.Ipv6CutPrefixSuffix("[::1]")
 
 ---
 
+## Test
+
+```
+git clone https://github.com/bddjr/hlfhr
+cd hlfhr
+./run.sh
+```
+
+---
+
 ## Reference
 
 https://developer.mozilla.org/docs/Web/HTTP/Session  
@@ -308,7 +306,8 @@ https://github.com/golang/go/issues/49310
 
 "net/http"  
 "net"  
-"crypto/tls"
+"crypto/tls"  
+"reflect"
 
 ---
 
