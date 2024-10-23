@@ -1,10 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/bddjr/hlfhr"
@@ -22,10 +26,24 @@ func main() {
 	})
 	// Then just use it like http.Server .
 
+	fmt.Println("IsShuttingDown:", srv.IsShuttingDown())
 	testPrint(srv)
+	fmt.Println("Press Ctrl+C close server")
 
-	err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
-	fmt.Println(err)
+	go func() {
+		err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic(err)
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT)
+	<-c
+	srv.Close()
+
+	fmt.Println("IsShuttingDown:", srv.IsShuttingDown())
+	time.Sleep(100 * time.Millisecond)
 }
 
 func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
