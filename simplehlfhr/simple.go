@@ -50,13 +50,13 @@ func NewListener(inner net.Listener, srv *http.Server) net.Listener {
 	if !ok {
 		l = &Listener{Listener: inner}
 	}
-	l.srv = srv
+	l.HttpServer = srv
 	return l
 }
 
 type Listener struct {
 	net.Listener
-	srv *http.Server
+	HttpServer *http.Server
 }
 
 func (l *Listener) Accept() (c net.Conn, err error) {
@@ -64,7 +64,7 @@ func (l *Listener) Accept() (c net.Conn, err error) {
 	if err == nil {
 		c = &conn{
 			Conn: c,
-			srv:  l.srv,
+			srv:  l.HttpServer,
 		}
 	}
 	return
