@@ -87,6 +87,7 @@ func (c *conn) Read(b []byte) (int, error) {
 		return n, nil
 	}
 
+	defer c.Conn.Close()
 	lastLF := -len("\r\n") - 1
 	maxHeaderLen := http.DefaultMaxHeaderBytes
 	if c.srv != nil && c.srv.MaxHeaderBytes != 0 {

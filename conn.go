@@ -44,6 +44,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	}
 
 	// Looks like HTTP.
+	defer c.Conn.Close()
 
 	chhr := &connHttpHeaderReader{c: c}
 	chhr.setMax()
