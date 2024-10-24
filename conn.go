@@ -32,18 +32,18 @@ func (c *conn) logf(format string, args ...any) {
 
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if c.isReadingTLS || err != nil || n <= 0 || len(b) < 576 {
+	if c.isReadingTLS || err != nil || n <= 0 {
 		return n, err
 	}
 
-	// len(b) == 576
-
-	if !ConnFirstByteLooksLikeHttp(b[0]) {
+	if !ConnFirstByteLooksLikeHttp(b[0]) || len(b) < 576 {
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
 		c.isReadingTLS = true
 		return n, nil
 	}
+
+	// len(b) == 576
 
 	// Looks like HTTP.
 	defer c.Conn.Close()
