@@ -6,14 +6,12 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"time"
 )
 
 var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
 
 type conn struct {
-	isReadingTLS   bool
-	isHandlingHttp bool
+	isReadingTLS bool
 	net.Conn
 	l *Listener
 }
@@ -24,58 +22,17 @@ func IsMyConn(inner net.Conn) bool {
 }
 
 func (c *conn) logf(format string, args ...any) {
-	srv := c.l.HttpServer
-	if srv != nil {
-		el := srv.ErrorLog
-		if el != nil {
-			el.Printf(format, args...)
-			return
-		}
+	if c.l.HttpServer != nil && c.l.HttpServer.ErrorLog != nil {
+		c.l.HttpServer.ErrorLog.Printf(format, args...)
+		return
 	}
 	log.Printf(format, args...)
 }
 
-func (c *conn) setReadHeaderTimeout() error {
-	srv := c.l.HttpServer
-	if srv != nil {
-		t := srv.ReadHeaderTimeout
-		if t > 0 {
-			return c.Conn.SetReadDeadline(time.Now().Add(t))
-		}
-	}
-	return c.setReadTimeout()
-}
-
-func (c *conn) setReadTimeout() error {
-	srv := c.l.HttpServer
-	if srv != nil {
-		t := srv.ReadTimeout
-		if t > 0 {
-			return c.Conn.SetReadDeadline(time.Now().Add(t))
-		}
-	}
-	return c.Conn.SetReadDeadline(time.Time{})
-}
-
-func (c *conn) setWriteTimeout() error {
-	srv := c.l.HttpServer
-	if srv != nil {
-		t := srv.WriteTimeout
-		if t > 0 {
-			return c.Conn.SetWriteDeadline(time.Now().Add(t))
-		}
-	}
-	return c.Conn.SetWriteDeadline(time.Time{})
-}
-
-func (c *conn) handleHttp(firstByte byte) {
-	// HTTP/1.1
-	defer c.Conn.Close()
-
+func (c *conn) serve(firstByte byte) {
 	// Read HTTP header
 	chhr := connHttpHeaderReader{c: c}
 	chhr.setStatusFirstByte(firstByte)
-	c.setReadHeaderTimeout()
 
 	r, err := http.ReadRequest(bufio.NewReader(&chhr))
 	if err != nil {
@@ -90,12 +47,10 @@ func (c *conn) handleHttp(firstByte byte) {
 	// Response
 	w := newResponse(c.Conn)
 	chhr.setStatusReadingBody()
-	c.setReadTimeout()
-	c.setWriteTimeout()
 
-	if h := c.l.HttpOnHttpsPortErrorHandler; h != nil {
+	if c.l.HttpOnHttpsPortErrorHandler != nil {
 		// Handler
-		h.ServeHTTP(w, r)
+		c.l.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
 	} else {
 		// Redirect
 		RedirectToHttps(w, r, 302)
@@ -112,9 +67,6 @@ func (c *conn) Read(b []byte) (int, error) {
 	if c.isReadingTLS || len(b) == 0 {
 		return c.Conn.Read(b)
 	}
-	if c.isHandlingHttp {
-		return 0, net.ErrClosed
-	}
 
 	// Read 1 Byte Header
 	n, err := c.Conn.Read(b[:1])
@@ -124,8 +76,7 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	if ConnFirstByteLooksLikeHttp(b[0]) {
 		// Looks like HTTP.
-		c.isHandlingHttp = true
-		go c.handleHttp(b[0])
+		c.serve(b[0])
 		return 0, ErrHttpOnHttpsPort
 	}
 
@@ -137,11 +88,4 @@ func (c *conn) Read(b []byte) (int, error) {
 		return n + 1, err
 	}
 	return 1, nil
-}
-
-func (c *conn) Close() error {
-	if c.isHandlingHttp {
-		return nil
-	}
-	return c.Conn.Close()
 }

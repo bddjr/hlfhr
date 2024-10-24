@@ -41,7 +41,7 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	err := simplehlfhr.ListenAndServeTLS(srv, "../../test/localhost.crt", "../../test/localhost.key")
+	err := simplehlfhr.ListenAndServeTLS(srv, "localhost.crt", "localhost.key")
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}

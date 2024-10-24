@@ -17,12 +17,9 @@ type connHttpHeaderReader struct {
 }
 
 func (r *connHttpHeaderReader) setStatusMax() {
-	srv := r.c.l.HttpServer
-	if srv != nil {
-		r.status = srv.MaxHeaderBytes
-		if r.status > 0 {
-			return
-		}
+	if r.c.l.HttpServer != nil && r.c.l.HttpServer.MaxHeaderBytes > 0 {
+		r.status = r.c.l.HttpServer.MaxHeaderBytes
+		return
 	}
 	r.status = http.DefaultMaxHeaderBytes
 }
