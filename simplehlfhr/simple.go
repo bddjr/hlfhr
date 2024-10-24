@@ -71,19 +71,19 @@ func (l *Listener) Accept() (c net.Conn, err error) {
 }
 
 type conn struct {
-	isNotFirstRead bool
+	isReadingTLS bool
 	net.Conn
 	srv *http.Server
 }
 
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if c.isNotFirstRead || err != nil || n == 0 {
+	if c.isReadingTLS || err != nil || n == 0 {
 		return n, err
 	}
-	c.isNotFirstRead = true
 
 	if !hlfhr.ConnFirstByteLooksLikeHttp(b[0]) {
+		c.isReadingTLS = true
 		return n, err
 	}
 
@@ -94,7 +94,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	}
 
 	for {
-		// Fix "connection was reset"
+		// Fix "connection was reset" for method "GET"
 		if n > 0 {
 			for i, v := range b[:n] {
 				if v == '\n' {
@@ -118,7 +118,7 @@ func (c *conn) Read(b []byte) (int, error) {
 		}
 		n, err = c.Conn.Read(b)
 		if err != nil {
-			return n, err
+			return 0, err
 		}
 	}
 }
