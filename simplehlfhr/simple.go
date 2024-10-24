@@ -92,7 +92,6 @@ func (c *conn) Read(b []byte) (int, error) {
 	if c.srv != nil && c.srv.MaxHeaderBytes != 0 {
 		maxHeaderLen = c.srv.MaxHeaderBytes
 	}
-	b[0] = 0
 
 	for {
 		// Fix "connection was reset" for method "GET"
