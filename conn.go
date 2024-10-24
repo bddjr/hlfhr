@@ -48,6 +48,7 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	chhr := &connHttpHeaderReader{c: c}
 	chhr.setMax()
+	chhr.max -= n
 
 	br := NewBufioReaderWithBytes(b, n, chhr)
 
