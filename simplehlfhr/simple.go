@@ -107,14 +107,15 @@ func (c *conn) Read(b []byte) (int, error) {
 		// Fix "connection was reset" for method "GET"
 		if n > 0 {
 			for i, v := range b[:n] {
-				if v == '\n' {
-					if i-lastLF <= len("\r\n") {
-						// Script Redirect
-						c.Conn.Write(resp)
-						return 0, hlfhr.ErrHttpOnHttpsPort
-					}
-					lastLF = i
+				if v != '\n' {
+					continue
 				}
+				if i-lastLF <= len("\r\n") {
+					// Script Redirect
+					c.Conn.Write(resp)
+					return 0, hlfhr.ErrHttpOnHttpsPort
+				}
+				lastLF = i
 			}
 			if n >= maxHeaderLen {
 				return 0, io.EOF
