@@ -229,6 +229,15 @@ b := []byte("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
 looksLikeHttp := hlfhr.ConnFirstByteLooksLikeHttp(b[0])
 ```
 
+#### NewBufioReaderWithBytes
+
+```go
+var c net.Conn
+var b []byte
+n, err := c.Read(b)
+br := hlfhr.NewBufioReaderWithBytes(b, n, c)
+```
+
 #### Redirect
 
 ```go

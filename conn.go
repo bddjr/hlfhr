@@ -1,12 +1,10 @@
 package hlfhr
 
 import (
-	"bufio"
 	"errors"
 	"log"
 	"net"
 	"net/http"
-	"reflect"
 )
 
 var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
@@ -51,15 +49,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	chhr := &connHttpHeaderReader{c: c}
 	chhr.setMax()
 
-	// Buffer
-	br := &bufio.Reader{}
-	brElem := reflect.ValueOf(br).Elem()
-	// fill buffer
-	*(*[]byte)(brElem.FieldByName("buf").Addr().UnsafePointer()) = b
-	// fill reader
-	br.Reset(chhr)
-	// fill length
-	*(*int)(brElem.FieldByName("w").Addr().UnsafePointer()) = len(b)
+	br := NewBufioReaderWithBytes(b, n, chhr)
 
 	// Read request
 	r, err := http.ReadRequest(br)
