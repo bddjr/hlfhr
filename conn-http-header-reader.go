@@ -15,14 +15,12 @@ type connHttpHeaderReader struct {
 
 func (r *connHttpHeaderReader) setMax(bufferContentLength int) {
 	if r.c.l.HttpServer != nil && r.c.l.HttpServer.MaxHeaderBytes != 0 {
-		r.max = max(r.c.l.HttpServer.MaxHeaderBytes, 0)
+		r.max = r.c.l.HttpServer.MaxHeaderBytes
 	} else {
 		r.max = http.DefaultMaxHeaderBytes
 	}
-
-	if r.max > bufferContentLength {
-		r.max -= bufferContentLength
-	} else {
+	r.max -= bufferContentLength
+	if r.max < 0 {
 		r.max = 0
 	}
 }
