@@ -13,12 +13,18 @@ type connHttpHeaderReader struct {
 	max int
 }
 
-func (r *connHttpHeaderReader) setMax() {
-	if r.c.l.HttpServer != nil && r.c.l.HttpServer.MaxHeaderBytes > 0 {
-		r.max = r.c.l.HttpServer.MaxHeaderBytes
-		return
+func (r *connHttpHeaderReader) setMax(bufferContentLength int) {
+	if r.c.l.HttpServer != nil && r.c.l.HttpServer.MaxHeaderBytes != 0 {
+		r.max = max(r.c.l.HttpServer.MaxHeaderBytes, 0)
+	} else {
+		r.max = http.DefaultMaxHeaderBytes
 	}
-	r.max = http.DefaultMaxHeaderBytes
+
+	if r.max > bufferContentLength {
+		r.max -= bufferContentLength
+	} else {
+		r.max = 0
+	}
 }
 
 func (r *connHttpHeaderReader) setReadingBody() {
