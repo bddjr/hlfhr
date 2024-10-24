@@ -88,7 +88,7 @@ cd simplehlfhr
 
 ## Reference
 
-https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Status/300
+https://developer.mozilla.org/docs/Web/HTTP/Status/300
 
 [hlfhr](../)
 
