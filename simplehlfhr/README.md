@@ -2,6 +2,11 @@
 
 Full version: [hlfhr](../)
 
+If client sent an HTTP request to an HTTPS server, returns script redirect.
+```html
+<script>location.protocol='https:'</script>
+```
+
 ---
 
 ## Get
