@@ -32,9 +32,11 @@ func (c *conn) logf(format string, args ...any) {
 
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if c.isReadingTLS || err != nil || n == 0 {
+	if c.isReadingTLS || err != nil || n <= 0 || len(b) < 576 {
 		return n, err
 	}
+
+	// len(b) == 576
 
 	if !ConnFirstByteLooksLikeHttp(b[0]) {
 		// Not looks like HTTP.
@@ -53,11 +55,6 @@ func (c *conn) Read(b []byte) (int, error) {
 	br := &bufio.Reader{}
 	brElem := reflect.ValueOf(br).Elem()
 	// fill buffer
-	if len(b) < 16 {
-		nb := make([]byte, 16)
-		copy(nb, b)
-		b = nb
-	}
 	*(*[]byte)(brElem.FieldByName("buf").Addr().UnsafePointer()) = b
 	// fill reader
 	br.Reset(chhr)

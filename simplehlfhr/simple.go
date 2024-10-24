@@ -78,15 +78,20 @@ type conn struct {
 
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if c.isReadingTLS || err != nil || n == 0 {
+	if c.isReadingTLS || err != nil || n <= 0 || len(b) < 576 {
 		return n, err
 	}
 
+	// len(b) == 576
+
 	if !hlfhr.ConnFirstByteLooksLikeHttp(b[0]) {
+		// Not looks like HTTP.
+		// TLS handshake: 0x16
 		c.isReadingTLS = true
 		return n, nil
 	}
 
+	// Looks like HTTP.
 	defer c.Conn.Close()
 	lastLF := -len("\r\n") - 1
 	maxHeaderLen := http.DefaultMaxHeaderBytes
@@ -116,8 +121,6 @@ func (c *conn) Read(b []byte) (int, error) {
 
 		if len(b) > maxHeaderLen {
 			b = b[:maxHeaderLen]
-		} else if len(b) < 16 {
-			b = make([]byte, 16)
 		}
 		n, err = c.Conn.Read(b)
 		if err != nil {
