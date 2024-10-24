@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"reflect"
 )
 
 var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
@@ -29,24 +30,53 @@ func (c *conn) logf(format string, args ...any) {
 	log.Printf(format, args...)
 }
 
-func (c *conn) serve(firstByte byte) {
-	// Read HTTP header
-	chhr := connHttpHeaderReader{c: c}
-	chhr.setStatusFirstByte(firstByte)
+func (c *conn) Read(b []byte) (int, error) {
+	n, err := c.Conn.Read(b)
+	if c.isReadingTLS || err != nil || n == 0 {
+		return n, err
+	}
 
-	r, err := http.ReadRequest(bufio.NewReader(&chhr))
+	if !ConnFirstByteLooksLikeHttp(b[0]) {
+		// Not looks like HTTP.
+		// TLS handshake: 0x16
+		c.isReadingTLS = true
+		return n, nil
+	}
+
+	// Looks like HTTP.
+
+	chhr := &connHttpHeaderReader{c: c}
+	chhr.setMax()
+
+	// Buffer
+	br := &bufio.Reader{}
+	brElem := reflect.ValueOf(br).Elem()
+	// fill buffer
+	if len(b) < 16 {
+		nb := make([]byte, 16)
+		copy(nb, b)
+		b = nb
+	}
+	*(*[]byte)(brElem.FieldByName("buf").Addr().UnsafePointer()) = b
+	// fill reader
+	br.Reset(chhr)
+	// fill length
+	*(*int)(brElem.FieldByName("w").Addr().UnsafePointer()) = len(b)
+
+	// Read request
+	r, err := http.ReadRequest(br)
 	if err != nil {
 		c.logf("hlfhr: Read request error from %s: %v", c.Conn.RemoteAddr(), err)
-		return
+		return 0, ErrHttpOnHttpsPort
 	}
 	if r.Host == "" {
 		c.logf("hlfhr: error form %s: missing required Host header", c.Conn.RemoteAddr())
-		return
+		return 0, ErrHttpOnHttpsPort
 	}
 
 	// Response
 	w := newResponse(c.Conn)
-	chhr.setStatusReadingBody()
+	chhr.setReadingBody()
 
 	if c.l.HttpOnHttpsPortErrorHandler != nil {
 		// Handler
@@ -61,31 +91,6 @@ func (c *conn) serve(firstByte byte) {
 	if err != nil {
 		c.logf("hlfhr: Write error for %s: %v", c.Conn.RemoteAddr(), err)
 	}
-}
 
-func (c *conn) Read(b []byte) (int, error) {
-	if c.isReadingTLS || len(b) == 0 {
-		return c.Conn.Read(b)
-	}
-
-	// Read 1 Byte Header
-	n, err := c.Conn.Read(b[:1])
-	if err != nil || n == 0 {
-		return 0, err
-	}
-
-	if ConnFirstByteLooksLikeHttp(b[0]) {
-		// Looks like HTTP.
-		c.serve(b[0])
-		return 0, ErrHttpOnHttpsPort
-	}
-
-	// Not looks like HTTP.
-	// TLS handshake: 0x16
-	c.isReadingTLS = true
-	if len(b) > 1 {
-		n, err = c.Conn.Read(b[1:])
-		return n + 1, err
-	}
-	return 1, nil
+	return 0, ErrHttpOnHttpsPort
 }

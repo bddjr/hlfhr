@@ -87,11 +87,12 @@ func (c *conn) Read(b []byte) (int, error) {
 		return n, nil
 	}
 
-	lastLF := -len("\n\r\n")
+	lastLF := -len("\r\n") - 1
 	maxHeaderLen := http.DefaultMaxHeaderBytes
 	if c.srv != nil && c.srv.MaxHeaderBytes != 0 {
 		maxHeaderLen = c.srv.MaxHeaderBytes
 	}
+	b[0] = 0
 
 	for {
 		// Fix "connection was reset" for method "GET"
@@ -106,10 +107,10 @@ func (c *conn) Read(b []byte) (int, error) {
 					lastLF = i
 				}
 			}
-			maxHeaderLen -= n
-			if maxHeaderLen <= 0 {
+			if n >= maxHeaderLen {
 				return 0, io.EOF
 			}
+			maxHeaderLen -= n
 			lastLF -= n
 		}
 
