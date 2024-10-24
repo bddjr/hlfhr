@@ -84,7 +84,7 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	if !hlfhr.ConnFirstByteLooksLikeHttp(b[0]) {
 		c.isReadingTLS = true
-		return n, err
+		return n, nil
 	}
 
 	lastLF := -len("\n\r\n")
