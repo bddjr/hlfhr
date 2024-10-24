@@ -177,6 +177,13 @@ srv := hlfhr.New(&http.Server{})
 srv := hlfhr.NewServer(&http.Server{})
 ```
 
+#### IsHttpServerShuttingDown
+
+```go
+var srv *http.Server
+isShuttingDown := hlfhr.IsHttpServerShuttingDown(srv)
+```
+
 #### Server.IsShuttingDown
 
 ```go
@@ -213,6 +220,13 @@ isHlfhrListener := hlfhr.IsMyListener(l)
 ```go
 var c net.Conn
 isHlfhrConn := hlfhr.IsMyConn(c)
+```
+
+#### ConnFirstByteLooksLikeHttp
+
+```go
+b := []byte("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+looksLikeHttp := hlfhr.ConnFirstByteLooksLikeHttp(b[0])
 ```
 
 #### Redirect
