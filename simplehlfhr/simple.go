@@ -115,6 +115,8 @@ func (c *conn) Read(b []byte) (int, error) {
 
 		if len(b) > maxHeaderLen {
 			b = b[:maxHeaderLen]
+		} else if len(b) < 16 {
+			b = make([]byte, 16)
 		}
 		n, err = c.Conn.Read(b)
 		if err != nil {
