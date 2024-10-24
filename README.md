@@ -156,7 +156,7 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 // Script Redirect
 srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(400)
+	w.WriteHeader(300)
 	io.WriteString(w, "<script>location.protocol='https:'</script>")
 })
 ```
