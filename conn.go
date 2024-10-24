@@ -122,10 +122,8 @@ func (c *conn) Read(b []byte) (int, error) {
 		return 0, err
 	}
 
-	switch b[0] {
-	case 'G', 'H', 'P', 'O', 'D', 'C', 'T':
+	if ConnFirstByteLooksLikeHttp(b[0]) {
 		// Looks like HTTP.
-		// GET, HEAD, POST PUT PATCH, OPTIONS, DELETE, CONNECT, TRACE
 		c.isHandlingHttp = true
 		go c.handleHttp(b[0])
 		return 0, ErrHttpOnHttpsPort

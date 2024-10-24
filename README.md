@@ -2,8 +2,9 @@
 
 If client sent an HTTP request to an HTTPS server, returns [302 redirection](https://developer.mozilla.org/docs/Web/HTTP/Status/302), like [nginx](https://nginx.org)'s ["error_page 497"](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors).
 
-Related Issue:  
-[net/http: configurable error message for Client sent an HTTP request to an HTTPS server. #49310](https://github.com/golang/go/issues/49310)
+Related issue: https://github.com/golang/go/issues/49310
+
+Simple version: [simplehlfhr](simplehlfhr)
 
 ---
 
@@ -53,7 +54,6 @@ func main() {
 			// Write something...
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       10 * time.Second,
 	})
 	// Then just use it like http.Server .
 
@@ -74,7 +74,6 @@ func main() {
 			// Write something...
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       10 * time.Second,
 	})
 
 	var err error
@@ -103,7 +102,6 @@ func main() {
 			// Write something...
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       10 * time.Second,
 	}
 
 	var err error
@@ -299,10 +297,17 @@ cd hlfhr
 https://developer.mozilla.org/docs/Web/HTTP/Session  
 https://developer.mozilla.org/docs/Web/HTTP/Methods  
 https://developer.mozilla.org/docs/Web/HTTP/Redirections  
+https://developer.mozilla.org/docs/Web/HTTP/Status/302
+https://developer.mozilla.org/docs/Web/HTTP/Status/307
 https://developer.mozilla.org/docs/Web/HTTP/Headers/Connection
 
-https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors  
-https://github.com/golang/go/issues/49310
+https://tls12.xargs.org/#client-hello  
+https://tls13.xargs.org/#client-hello
+
+https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors
+
+https://github.com/golang/go/issues/49310  
+https://github.com/golang/go/issues/66501
 
 "net/http"  
 "net"  

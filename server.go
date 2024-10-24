@@ -117,8 +117,12 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 	return srv.ListenAndServeTLS(certFile, keyFile)
 }
 
-func (s *Server) IsShuttingDown() bool {
+func IsHttpServerShuttingDown(srv *http.Server) bool {
 	// Get private value
-	inShutdown := (*atomic.Bool)(reflect.ValueOf(s.Server).Elem().FieldByName("inShutdown").Addr().UnsafePointer())
+	inShutdown := (*atomic.Bool)(reflect.ValueOf(srv).Elem().FieldByName("inShutdown").Addr().UnsafePointer())
 	return inShutdown.Load()
+}
+
+func (s *Server) IsShuttingDown() bool {
+	return IsHttpServerShuttingDown(s.Server)
 }
