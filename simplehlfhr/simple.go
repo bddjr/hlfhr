@@ -76,6 +76,13 @@ type conn struct {
 	srv *http.Server
 }
 
+func (c *conn) maxHeaderLen() int {
+	if c.srv != nil && c.srv.MaxHeaderBytes != 0 {
+		return c.srv.MaxHeaderBytes
+	}
+	return http.DefaultMaxHeaderBytes
+}
+
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
 	if c.isReadingTLS || err != nil || n <= 0 {
@@ -94,10 +101,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	// Looks like HTTP.
 	defer c.Conn.Close()
 	lastLF := -len("\r\n") - 1
-	maxHeaderLen := http.DefaultMaxHeaderBytes
-	if c.srv != nil && c.srv.MaxHeaderBytes != 0 {
-		maxHeaderLen = c.srv.MaxHeaderBytes
-	}
+	maxHeaderLen := c.maxHeaderLen()
 
 	for {
 		// Fix "connection was reset" for method "GET"
