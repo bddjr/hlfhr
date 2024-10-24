@@ -88,7 +88,6 @@ func (c *conn) Read(b []byte) (int, error) {
 	}
 
 	lastLF := -len("\n\r\n")
-	offset := 0
 	maxHeaderLen := http.DefaultMaxHeaderBytes
 	if c.srv != nil && c.srv.MaxHeaderBytes != 0 {
 		maxHeaderLen = c.srv.MaxHeaderBytes
@@ -99,20 +98,19 @@ func (c *conn) Read(b []byte) (int, error) {
 		if n > 0 {
 			for i, v := range b[:n] {
 				if v == '\n' {
-					iPlusOffset := i + offset
-					if iPlusOffset-lastLF <= len("\r\n") {
+					if i-lastLF <= len("\r\n") {
 						// Script Redirect
 						c.Conn.Write(resp)
-						b[0] = 0
 						return 0, hlfhr.ErrHttpOnHttpsPort
 					}
-					lastLF = iPlusOffset
+					lastLF = i
 				}
 			}
 			maxHeaderLen -= n
 			if maxHeaderLen <= 0 {
 				return 0, io.EOF
 			}
+			lastLF -= n
 		}
 
 		if len(b) > maxHeaderLen {
@@ -122,6 +120,5 @@ func (c *conn) Read(b []byte) (int, error) {
 		if err != nil {
 			return n, err
 		}
-		offset += n
 	}
 }
