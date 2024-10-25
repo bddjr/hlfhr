@@ -11,7 +11,7 @@ import (
 
 	// Only use:
 	//  - IsHttpServerShuttingDown
-	//  - FirstByteLooksLikeHttp
+	//  - ConnFirstByteLooksLikeHttp
 	//  - ErrHttpOnHttpsPort
 	"github.com/bddjr/hlfhr"
 )
