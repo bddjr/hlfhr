@@ -1,6 +1,6 @@
 [<= Back](README.md)
 
-```curl
+```
 curl -v -k -L http://localhost:5678/
 * Host localhost:5678 was resolved.
 * IPv6: ::1

@@ -34,9 +34,9 @@ First byte looks like HTTP -> Read request -> ⛔Missing Host header -> Close.
 
 ### See
 
-- [curl](README_curl.md)
-- [conn.go](conn.go)
-- [conn-http-header-reader.go](conn-http-header-reader.go)
+- [curl](curl.md)
+- [src_conn.go](src_conn.go)
+- [src_conn-looks-like-http.go](src_conn-looks-like-http.go)
 
 ---
 
