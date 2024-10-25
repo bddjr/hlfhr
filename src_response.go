@@ -37,9 +37,7 @@ func (rw *response) Header() http.Header {
 
 func (rw *response) Write(b []byte) (int, error) {
 	if rw.body == nil {
-		nb := make([]byte, len(b))
-		copy(nb, b)
-		rw.body = bytes.NewBuffer(nb)
+		rw.body = bytes.NewBuffer(b)
 		return len(b), nil
 	}
 	return rw.body.Write(b)
@@ -47,7 +45,7 @@ func (rw *response) Write(b []byte) (int, error) {
 
 func (rw *response) WriteString(s string) (int, error) {
 	if rw.body == nil {
-		rw.body = bytes.NewBuffer([]byte(s))
+		rw.body = bytes.NewBufferString(s)
 		return len(s), nil
 	}
 	return rw.body.WriteString(s)
