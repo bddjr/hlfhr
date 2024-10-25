@@ -1,37 +1,52 @@
 package hlfhr
 
 import (
+	"errors"
 	"io"
 	"net/http"
 )
 
-type connHttpHeaderReader struct {
-	c *conn
+func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
+	rd := &connReadRequestReader{rd: c.Conn}
+
+	// set max
+	if c.l.HttpServer != nil && c.l.HttpServer.MaxHeaderBytes != 0 {
+		rd.max = c.l.HttpServer.MaxHeaderBytes
+	} else {
+		rd.max = http.DefaultMaxHeaderBytes
+	}
+	rd.max -= n
+	if rd.max < 0 {
+		rd.max = 0
+	}
+
+	// bufio
+	br := NewBufioReaderWithBytes(b, n, rd)
+
+	// read
+	req, err := http.ReadRequest(br)
+	if err != nil {
+		return nil, err
+	}
+	if req.Host == "" {
+		return nil, errors.New("missing required Host header")
+	}
+
+	rd.max = -1
+	return req, nil
+}
+
+type connReadRequestReader struct {
+	rd io.Reader
 
 	// max: >= 0
 	// reading body: -1
 	max int
 }
 
-func (r *connHttpHeaderReader) setMax(bufferContentLength int) {
-	if r.c.l.HttpServer != nil && r.c.l.HttpServer.MaxHeaderBytes != 0 {
-		r.max = r.c.l.HttpServer.MaxHeaderBytes
-	} else {
-		r.max = http.DefaultMaxHeaderBytes
-	}
-	r.max -= bufferContentLength
-	if r.max < 0 {
-		r.max = 0
-	}
-}
-
-func (r *connHttpHeaderReader) setReadingBody() {
-	r.max = -1
-}
-
-func (r *connHttpHeaderReader) Read(b []byte) (int, error) {
+func (r *connReadRequestReader) Read(b []byte) (int, error) {
 	if r.max == -1 {
-		return r.c.Conn.Read(b)
+		return r.rd.Read(b)
 	}
 	if r.max == 0 {
 		return 0, io.EOF
@@ -39,7 +54,7 @@ func (r *connHttpHeaderReader) Read(b []byte) (int, error) {
 	if len(b) > r.max {
 		b = b[:r.max]
 	}
-	n, err := r.c.Conn.Read(b)
+	n, err := r.rd.Read(b)
 	r.max -= n
 	return n, err
 }

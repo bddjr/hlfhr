@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"net"
-	"net/http"
 )
 
 var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
@@ -41,30 +40,19 @@ func (c *conn) Read(b []byte) (int, error) {
 		return n, nil
 	}
 
-	// len(b) == 576
-
 	// Looks like HTTP.
+	// len(b) == 576
 	defer c.Conn.Close()
 
-	chhr := &connHttpHeaderReader{c: c}
-	chhr.setMax(n)
-
-	br := NewBufioReaderWithBytes(b, n, chhr)
-
 	// Read request
-	r, err := http.ReadRequest(br)
+	r, err := c.readRequest(b, n)
 	if err != nil {
 		c.logf("hlfhr: Read request error from %s: %v", c.Conn.RemoteAddr(), err)
-		return 0, ErrHttpOnHttpsPort
-	}
-	if r.Host == "" {
-		c.logf("hlfhr: error form %s: missing required Host header", c.Conn.RemoteAddr())
 		return 0, ErrHttpOnHttpsPort
 	}
 
 	// Response
 	w := newResponse(c.Conn)
-	chhr.setReadingBody()
 
 	if c.l.HttpOnHttpsPortErrorHandler != nil {
 		// Handler

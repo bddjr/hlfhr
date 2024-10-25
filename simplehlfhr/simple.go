@@ -96,9 +96,8 @@ func (c *conn) Read(b []byte) (int, error) {
 		return n, nil
 	}
 
-	// len(b) == 576
-
 	// Looks like HTTP.
+	// len(b) == 576
 	defer c.Conn.Close()
 	lastLF := -len("\r\n") - 1
 	maxHeaderLen := c.maxHeaderLen()
