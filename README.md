@@ -320,8 +320,8 @@ cd hlfhr
 https://developer.mozilla.org/docs/Web/HTTP/Session  
 https://developer.mozilla.org/docs/Web/HTTP/Methods  
 https://developer.mozilla.org/docs/Web/HTTP/Redirections  
-https://developer.mozilla.org/docs/Web/HTTP/Status/302
-https://developer.mozilla.org/docs/Web/HTTP/Status/307
+https://developer.mozilla.org/docs/Web/HTTP/Status/302  
+https://developer.mozilla.org/docs/Web/HTTP/Status/307  
 https://developer.mozilla.org/docs/Web/HTTP/Headers/Connection
 
 https://tls12.xargs.org/#client-hello  
