@@ -163,7 +163,7 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 
 ---
 
-## Feature Example
+## Method Example
 
 #### New
 
