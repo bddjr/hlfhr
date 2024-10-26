@@ -1,60 +1,38 @@
 package hlfhr
 
 import (
-	"errors"
 	"io"
 	"net/http"
 )
 
-func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
-	rd := &connReadRequestReader{rd: c.Conn}
+// 8388607 TiB
+const maxInt = int(^uint(0) >> 1)
 
-	// set max
-	if c.l.HttpServer != nil && c.l.HttpServer.MaxHeaderBytes != 0 {
-		rd.max = c.l.HttpServer.MaxHeaderBytes
+type MaxHeaderBytesReader struct {
+	Rd  io.Reader
+	Max int
+}
+
+func (r *MaxHeaderBytesReader) SetMax(srv *http.Server) {
+	if srv != nil && srv.MaxHeaderBytes != 0 {
+		r.Max = srv.MaxHeaderBytes
 	} else {
-		rd.max = http.DefaultMaxHeaderBytes
+		r.Max = http.DefaultMaxHeaderBytes
 	}
-	rd.max -= n
-	if rd.max < 0 {
-		rd.max = 0
-	}
-
-	// bufio
-	br := NewBufioReaderWithBytes(b, n, rd)
-
-	// read
-	req, err := http.ReadRequest(br)
-	if err != nil {
-		return nil, err
-	}
-	if req.Host == "" {
-		return nil, errors.New("missing required Host header")
-	}
-
-	rd.max = -1
-	return req, nil
 }
 
-type connReadRequestReader struct {
-	rd io.Reader
-
-	// max: >= 0
-	// reading body: -1
-	max int
+func (r *MaxHeaderBytesReader) SetReadingBody() {
+	r.Max = maxInt
 }
 
-func (r *connReadRequestReader) Read(b []byte) (int, error) {
-	if r.max == -1 {
-		return r.rd.Read(b)
-	}
-	if r.max == 0 {
+func (r *MaxHeaderBytesReader) Read(b []byte) (int, error) {
+	if r.Max <= 0 {
 		return 0, io.EOF
 	}
-	if len(b) > r.max {
-		b = b[:r.max]
+	if len(b) > r.Max {
+		b = b[:r.Max]
 	}
-	n, err := r.rd.Read(b)
-	r.max -= n
+	n, err := r.Rd.Read(b)
+	r.Max -= n
 	return n, err
 }

@@ -1,9 +1,9 @@
 package hlfhr
 
 // Reference:
-//  - https://developer.mozilla.org/docs/Web/HTTP/Methods
-//  - https://tls12.xargs.org/#client-hello
-//  - https://tls13.xargs.org/#client-hello
+//   - https://developer.mozilla.org/docs/Web/HTTP/Methods
+//   - https://tls12.xargs.org/#client-hello
+//   - https://tls13.xargs.org/#client-hello
 func ConnFirstByteLooksLikeHttp(firstByte byte) bool {
 	switch firstByte {
 	case 'G', // GET
@@ -16,5 +16,6 @@ func ConnFirstByteLooksLikeHttp(firstByte byte) bool {
 
 		return true
 	}
+	// TLS handshake: 0x16
 	return false
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net"
+	"net/http"
 )
 
 var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
@@ -19,12 +20,31 @@ func IsMyConn(inner net.Conn) bool {
 	return ok
 }
 
-func (c *conn) logf(format string, args ...any) {
+func (c *conn) log(v ...any) {
 	if c.l.HttpServer != nil && c.l.HttpServer.ErrorLog != nil {
-		c.l.HttpServer.ErrorLog.Printf(format, args...)
-		return
+		c.l.HttpServer.ErrorLog.Print(v...)
+	} else {
+		log.Print(v...)
 	}
-	log.Printf(format, args...)
+}
+
+func (c *conn) readRequest(b []byte, n int) (req *http.Request, errStr string) {
+	rd := &MaxHeaderBytesReader{Rd: c.Conn}
+	rd.SetMax(c.l.HttpServer)
+	rd.Max -= n
+
+	br := NewBufioReaderWithBytes(b, n, rd)
+
+	req, err := http.ReadRequest(br)
+	if err != nil {
+		return nil, err.Error()
+	}
+	if req.Host == "" {
+		return nil, "missing required Host header"
+	}
+
+	rd.SetReadingBody()
+	return req, ""
 }
 
 func (c *conn) Read(b []byte) (int, error) {
@@ -45,9 +65,9 @@ func (c *conn) Read(b []byte) (int, error) {
 	defer c.Conn.Close()
 
 	// Read request
-	r, err := c.readRequest(b, n)
-	if err != nil {
-		c.logf("hlfhr: Read request error from %s: %v", c.Conn.RemoteAddr(), err)
+	r, errStr := c.readRequest(b, n)
+	if r == nil {
+		c.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", errStr)
 		return 0, ErrHttpOnHttpsPort
 	}
 
@@ -65,8 +85,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	// Write
 	err = w.flush()
 	if err != nil {
-		c.logf("hlfhr: Write error for %s: %v", c.Conn.RemoteAddr(), err)
+		c.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
 	}
-
 	return 0, ErrHttpOnHttpsPort
 }
