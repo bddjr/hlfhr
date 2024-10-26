@@ -9,13 +9,11 @@ import (
 
 type response struct {
 	resp http.Response
-	w    io.Writer
 	body *bytes.Buffer
 }
 
-func newResponse(w io.Writer) *response {
+func newResponse() *response {
 	return &response{
-		w: w,
 		resp: http.Response{
 			ProtoMajor: 1,
 			ProtoMinor: 1,
@@ -27,43 +25,43 @@ func newResponse(w io.Writer) *response {
 	}
 }
 
-func (rw *response) Header() http.Header {
-	if rw.resp.StatusCode != 0 {
+func (r *response) Header() http.Header {
+	if r.resp.StatusCode != 0 {
 		// wrote header
 		return http.Header{}
 	}
-	return rw.resp.Header
+	return r.resp.Header
 }
 
-func (rw *response) Write(b []byte) (int, error) {
-	if rw.body == nil {
-		rw.body = bytes.NewBuffer(b)
+func (r *response) Write(b []byte) (int, error) {
+	if r.body == nil {
+		r.body = bytes.NewBuffer(b)
 		return len(b), nil
 	}
-	return rw.body.Write(b)
+	return r.body.Write(b)
 }
 
-func (rw *response) WriteString(s string) (int, error) {
-	if rw.body == nil {
-		rw.body = bytes.NewBufferString(s)
+func (r *response) WriteString(s string) (int, error) {
+	if r.body == nil {
+		r.body = bytes.NewBufferString(s)
 		return len(s), nil
 	}
-	return rw.body.WriteString(s)
+	return r.body.WriteString(s)
 }
 
-func (rw *response) WriteHeader(statusCode int) {
-	if rw.resp.StatusCode == 0 {
+func (r *response) WriteHeader(statusCode int) {
+	if r.resp.StatusCode == 0 {
 		// not wrote header
-		rw.resp.StatusCode = statusCode
+		r.resp.StatusCode = statusCode
 	}
 }
 
 // flush flushes buffered data to the client.
-func (rw *response) flush() error {
-	rw.WriteHeader(400)
-	if rw.body != nil {
-		rw.resp.ContentLength = int64(rw.body.Len())
-		rw.resp.Body = io.NopCloser(rw.body)
+func (r *response) flush(w io.Writer) error {
+	r.WriteHeader(400)
+	if r.body != nil {
+		r.resp.ContentLength = int64(r.body.Len())
+		r.resp.Body = io.NopCloser(r.body)
 	}
-	return rw.resp.Write(rw.w)
+	return r.resp.Write(w)
 }
