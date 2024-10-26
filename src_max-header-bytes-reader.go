@@ -6,7 +6,7 @@ import (
 )
 
 // 8388607 TiB
-const maxInt = int(^uint(0) >> 1)
+const MaxInt = int(^uint(0) >> 1)
 
 type MaxHeaderBytesReader struct {
 	Rd  io.Reader
@@ -22,7 +22,7 @@ func (r *MaxHeaderBytesReader) SetMax(srv *http.Server) {
 }
 
 func (r *MaxHeaderBytesReader) SetReadingBody() {
-	r.Max = maxInt
+	r.Max = MaxInt
 }
 
 func (r *MaxHeaderBytesReader) Read(b []byte) (int, error) {
