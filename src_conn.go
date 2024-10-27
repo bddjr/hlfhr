@@ -10,8 +10,8 @@ import (
 var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
 
 type conn struct {
-	isReadingTLS bool
 	net.Conn
+	// Reading TLS if nil
 	l *Listener
 }
 
@@ -49,14 +49,14 @@ func (c *conn) readRequest(b []byte, n int) (req *http.Request, errStr string) {
 
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if c.isReadingTLS || err != nil || n <= 0 {
+	if c.l == nil || err != nil || n <= 0 {
 		return n, err
 	}
 
 	if !ConnFirstByteLooksLikeHttp(b[0]) || len(b) < 576 {
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
-		c.isReadingTLS = true
+		c.l = nil
 		return n, nil
 	}
 
