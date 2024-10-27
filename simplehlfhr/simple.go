@@ -91,7 +91,7 @@ func (c *conn) Read(b []byte) (int, error) {
 		return n, err
 	}
 
-	if !hlfhr.ConnFirstByteLooksLikeHttp(b[0]) || len(b) < 16 {
+	if !hlfhr.ConnFirstByteLooksLikeHttp(b[0]) {
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
 		c.l = nil
