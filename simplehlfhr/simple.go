@@ -66,35 +66,35 @@ func (l *Listener) Accept() (c net.Conn, err error) {
 	if err == nil {
 		c = &conn{
 			Conn: c,
-			srv:  l.HttpServer,
+			l:    l,
 		}
 	}
 	return
 }
 
 type conn struct {
-	isReadingTLS bool
 	net.Conn
-	srv *http.Server
+	// Reading TLS if nil
+	l *Listener
 }
 
 func (c *conn) maxHeaderLen() int {
-	if c.srv != nil && c.srv.MaxHeaderBytes != 0 {
-		return c.srv.MaxHeaderBytes
+	if c.l.HttpServer != nil && c.l.HttpServer.MaxHeaderBytes != 0 {
+		return c.l.HttpServer.MaxHeaderBytes
 	}
 	return http.DefaultMaxHeaderBytes
 }
 
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if c.isReadingTLS || err != nil || n <= 0 {
+	if c.l == nil || err != nil || n <= 0 {
 		return n, err
 	}
 
 	if !hlfhr.ConnFirstByteLooksLikeHttp(b[0]) || len(b) < 16 {
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
-		c.isReadingTLS = true
+		c.l = nil
 		return n, nil
 	}
 
