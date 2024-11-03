@@ -18,23 +18,43 @@ go get github.com/bddjr/hlfhr
 
 ## Logic
 
-Hijacking ServeTLS -> Hijacking net.Listener.Accept -> Hijacking net.Conn
+```mermaid
+flowchart TD
+	Read("Hijacking net.Conn.Read")
 
-### Client HTTPS
+	IsLooksLikeHTTP("First byte looks like HTTP?")
 
-First byte not looks like HTTP -> ✅Continue...
+	Continue(["✅ Continue..."])
 
-### Client HTTP/1.1
+	ReadRequest("🔍 Read request")
 
-First byte looks like HTTP -> Read request -> Found Host header -> ⚪HttpOnHttpsPortErrorHandler or 🟡302 Redirect -> Close.
+	IsFindHostHeader("Find Host header?")
 
-### Client HTTP/???
+	IsHandlerExist("`
+	HttpOnHttpsPort
+	ErrorHandler
+	exist?`")
 
-First byte looks like HTTP -> Read request -> ⛔Missing Host header -> Close.
+	302Redirect{{"🟡 302 Redirect"}}
+
+	Handler{{"💡 Handler"}}
+
+	Close(["❌ Close."])
+
+    Read --> IsLooksLikeHTTP
+    IsLooksLikeHTTP -- "🔐false" --> Continue
+    IsLooksLikeHTTP -- "📄true" --> ReadRequest --> IsFindHostHeader
+    IsFindHostHeader -- "⛔false" --> Close
+    IsFindHostHeader -- "✅true" --> IsHandlerExist
+	IsHandlerExist -- "✖false" --> 302Redirect --> Close
+	IsHandlerExist -- "✅true" --> Handler --> Close
+```
 
 ### See
 
 - [curl](curl.md)
+- [src_server.go](src_server.go)
+- [src_listener.go](src_listener.go)
 - [src_conn.go](src_conn.go)
 - [src_conn-looks-like-http.go](src_conn-looks-like-http.go)
 

@@ -3,8 +3,11 @@
 Full version: [hlfhr](../)
 
 If client sent an HTTP request to an HTTPS server, returns script redirect.
+
 ```html
-<script>location.protocol='https:'</script>
+<script>
+	location.protocol = "https:";
+</script>
 ```
 
 ---
@@ -19,15 +22,28 @@ go get github.com/bddjr/hlfhr
 
 ## Logic
 
-Hijacking net.Listener.Accept -> Hijacking net.Conn.Read
+```mermaid
+flowchart TD
+	Read("Hijacking net.Conn.Read")
 
-### Client HTTPS
+	IsLooksLikeHTTP("First byte looks like HTTP?")
 
-First byte not looks like HTTP -> ✅Continue...
+	Continue(["✅ Continue..."])
 
-### Client HTTP/1.1
+	ReadRequest("`🔍
+	Read bytes until
+	encountering
+	#quot;\n\r\n#quot; or #quot;\n\n#quot;
+	`")
 
-First byte looks like HTTP -> Read bytes until encountering "\n\r\n" or "\n\n" -> 🟡300 Script Redirect -> Close.
+	ScriptRedirect{{"🟡 300 Script Redirect"}}
+
+	Close(["❌ Close."])
+
+    Read --> IsLooksLikeHTTP
+    IsLooksLikeHTTP -- "🔐false" --> Continue
+    IsLooksLikeHTTP -- "📄true" --> ReadRequest --> ScriptRedirect --> Close
+```
 
 ### See
 
