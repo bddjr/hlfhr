@@ -95,7 +95,6 @@ func main() {
 	})
 	// Then just use it like http.Server .
 
-	var err error
 	l, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
 		fmt.Println(err)
@@ -121,7 +120,6 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	var err error
 	l, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
 		fmt.Println(err)
