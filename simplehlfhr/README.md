@@ -55,6 +55,7 @@ flowchart TD
 
 ```go
 // Use ListenAndServeTLS
+
 func main() {
 	srv := &http.Server{
 		Addr:              ":5677",
@@ -62,6 +63,7 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
+	// Use ListenAndServeTLS
 	err := simplehlfhr.ListenAndServeTLS(srv, "localhost.crt", "localhost.key")
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
@@ -71,6 +73,7 @@ func main() {
 
 ```go
 // Use NewListener
+
 func main() {
 	srv := &http.Server{
 		Addr:              ":5677",

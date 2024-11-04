@@ -64,11 +64,10 @@ flowchart TD
 
 ```go
 // Use srv.ListenAndServeTLS
-var srv *hlfhr.Server
 
 func main() {
 	// Use hlfhr.New
-	srv = hlfhr.New(&http.Server{
+	srv := hlfhr.New(&http.Server{
 		Addr: ":5678",
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Write something...
@@ -84,20 +83,20 @@ func main() {
 
 ```go
 // Use srv.ServeTLS
-var l net.Listener
-var srv *hlfhr.Server
 
 func main() {
-	srv = hlfhr.New(&http.Server{
+	// Use hlfhr.New
+	srv := hlfhr.New(&http.Server{
 		Addr: ":5678",
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Write something...
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	})
+	// Then just use it like http.Server .
 
 	var err error
-	l, err = net.Listen("tcp", srv.Addr)
+	l, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -112,8 +111,6 @@ func main() {
 
 ```go
 // Use hlfhr.NewListener
-var l net.Listener
-var srv *http.Server
 
 func main() {
 	srv = &http.Server{
@@ -125,7 +122,7 @@ func main() {
 	}
 
 	var err error
-	l, err = net.Listen("tcp", srv.Addr)
+	l, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
 		fmt.Println(err)
 		return
