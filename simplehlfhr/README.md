@@ -2,7 +2,7 @@
 
 Full version: [hlfhr](../)
 
-If client sent an HTTP request to an HTTPS server, returns script redirect.
+If client sent an HTTP request to an HTTPS server `port`, returns script redirect.
 
 ```html
 <script>
