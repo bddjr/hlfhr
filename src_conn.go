@@ -68,9 +68,9 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	// Response
 	w := newResponse()
-	if c.l.handler != nil {
+	if c.l.HttpOnHttpsPortErrorHandler != nil {
 		// Handler
-		c.l.handler.ServeHTTP(w, r)
+		c.l.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
 	} else {
 		// Redirect
 		RedirectToHttps(w, r, 302)

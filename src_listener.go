@@ -7,8 +7,8 @@ import (
 
 type Listener struct {
 	net.Listener
-	srv     *http.Server
-	handler http.Handler
+	srv                         *http.Server
+	HttpOnHttpsPortErrorHandler http.Handler
 }
 
 func NewListener(
@@ -17,9 +17,9 @@ func NewListener(
 	httpOnHttpsPortErrorHandler http.Handler,
 ) net.Listener {
 	return &Listener{
-		Listener: inner,
-		srv:      srv,
-		handler:  httpOnHttpsPortErrorHandler,
+		Listener:                    inner,
+		srv:                         srv,
+		HttpOnHttpsPortErrorHandler: httpOnHttpsPortErrorHandler,
 	}
 }
 
