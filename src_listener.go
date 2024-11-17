@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-type listener struct {
+type Listener struct {
 	net.Listener
 	srv     *http.Server
 	handler http.Handler
@@ -16,17 +16,14 @@ func NewListener(
 	srv *http.Server,
 	httpOnHttpsPortErrorHandler http.Handler,
 ) net.Listener {
-	if _, ok := inner.(isMyListener); ok {
-		return inner
-	}
-	return &listener{
+	return &Listener{
 		Listener: inner,
 		srv:      srv,
 		handler:  httpOnHttpsPortErrorHandler,
 	}
 }
 
-func (l *listener) Accept() (c net.Conn, err error) {
+func (l *Listener) Accept() (c net.Conn, err error) {
 	c, err = l.Listener.Accept()
 	if err == nil {
 		// Hijacking net.Conn
@@ -37,9 +34,3 @@ func (l *listener) Accept() (c net.Conn, err error) {
 	}
 	return
 }
-
-type isMyListener interface {
-	IsHttpsListenerForHttpRedirect()
-}
-
-func (l *listener) IsHttpsListenerForHttpRedirect() {}

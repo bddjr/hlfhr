@@ -12,7 +12,7 @@ var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS ser
 type conn struct {
 	net.Conn
 	// Reading TLS if nil
-	l *listener
+	l *Listener
 }
 
 func (c *conn) log(v ...any) {
