@@ -24,6 +24,7 @@ srv := hlfhr.New(&http.Server{
 	// Write something...
 })
 // Then just use it like http.Server
+err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
 ```
 
 ---
