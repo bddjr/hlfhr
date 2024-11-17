@@ -16,6 +16,18 @@ go get github.com/bddjr/hlfhr
 
 ---
 
+## Example
+
+```go
+// Use hlfhr.New
+srv := hlfhr.New(&http.Server{
+	// Write something...
+})
+// Then just use it like http.Server
+```
+
+---
+
 ## Logic
 
 ```mermaid
@@ -57,85 +69,6 @@ flowchart TD
 - [src_listener.go](src_listener.go)
 - [src_conn.go](src_conn.go)
 - [src_conn-looks-like-http.go](src_conn-looks-like-http.go)
-
----
-
-## Example
-
-```go
-// Use srv.ListenAndServeTLS
-
-func main() {
-	// Use hlfhr.New
-	srv := hlfhr.New(&http.Server{
-		Addr: ":5678",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Write something...
-		}),
-		ReadHeaderTimeout: 10 * time.Second,
-	})
-	// Then just use it like http.Server .
-
-	err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
-	fmt.Println(err)
-}
-```
-
-```go
-// Use srv.ServeTLS
-
-func main() {
-	// Use hlfhr.New
-	srv := hlfhr.New(&http.Server{
-		Addr: ":5678",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Write something...
-		}),
-		ReadHeaderTimeout: 10 * time.Second,
-	})
-	// Then just use it like http.Server .
-
-	l, err := net.Listen("tcp", srv.Addr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer l.Close()
-
-	// Must use ServeTLS! For issue https://github.com/bddjr/hlfhr/issues/4
-	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
-	fmt.Println(err)
-}
-```
-
-```go
-// Use hlfhr.NewListener
-
-func main() {
-	srv = &http.Server{
-		Addr: ":5678",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Write something...
-		}),
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	l, err := net.Listen("tcp", srv.Addr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer l.Close()
-
-	// Use hlfhr.NewListener
-	var httpOnHttpsPortErrorHandler http.Handler = nil
-	l = hlfhr.NewListener(l, srv, httpOnHttpsPortErrorHandler)
-
-	// Must use ServeTLS! For issue https://github.com/bddjr/hlfhr/issues/4
-	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
-	fmt.Println(err)
-}
-```
 
 ---
 

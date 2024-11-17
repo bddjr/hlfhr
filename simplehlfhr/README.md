@@ -20,6 +20,34 @@ go get github.com/bddjr/hlfhr
 
 ---
 
+## Example
+
+```go
+// Use ListenAndServeTLS
+srv := &http.Server{
+	// Write something...
+}
+err := simplehlfhr.ListenAndServeTLS(srv, "localhost.crt", "localhost.key")
+```
+
+```go
+// Use NewListener
+srv := &http.Server{
+	// Write something...
+}
+
+l, err := net.Listen("tcp", srv.Addr)
+if err != nil {
+	return err
+}
+defer l.Close()
+
+l = simplehlfhr.NewListener(l, srv)
+err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
+```
+
+---
+
 ## Logic
 
 ```mermaid
@@ -48,54 +76,6 @@ flowchart TD
 ### See
 
 - [simple.go](simple.go)
-
----
-
-## Example
-
-```go
-// Use ListenAndServeTLS
-
-func main() {
-	srv := &http.Server{
-		Addr:              ":5677",
-		Handler:           http.HandlerFunc(httpResponseHandle),
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	// Use ListenAndServeTLS
-	err := simplehlfhr.ListenAndServeTLS(srv, "localhost.crt", "localhost.key")
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		panic(err)
-	}
-}
-```
-
-```go
-// Use NewListener
-
-func main() {
-	srv := &http.Server{
-		Addr:              ":5677",
-		Handler:           http.HandlerFunc(httpResponseHandle),
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	l, err := net.Listen("tcp", srv.Addr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer l.Close()
-
-	// Use NewListener
-	l = simplehlfhr.NewListener(l, srv)
-
-	// Must use ServeTLS! For issue https://github.com/bddjr/hlfhr/issues/4
-	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
-	fmt.Println(err)
-}
-```
 
 ---
 
