@@ -9,7 +9,6 @@ import (
 
 type response struct {
 	resp http.Response
-	body *bytes.Buffer
 }
 
 func newResponse() *response {
@@ -34,19 +33,19 @@ func (r *response) Header() http.Header {
 }
 
 func (r *response) Write(b []byte) (int, error) {
-	if r.body == nil {
-		r.body = bytes.NewBuffer(b)
+	if r.resp.Body == nil {
+		r.resp.Body = &respBuf{bytes.NewBuffer(b)}
 		return len(b), nil
 	}
-	return r.body.Write(b)
+	return r.resp.Body.(*respBuf).Write(b)
 }
 
 func (r *response) WriteString(s string) (int, error) {
-	if r.body == nil {
-		r.body = bytes.NewBufferString(s)
+	if r.resp.Body == nil {
+		r.resp.Body = &respBuf{bytes.NewBufferString(s)}
 		return len(s), nil
 	}
-	return r.body.WriteString(s)
+	return r.resp.Body.(*respBuf).WriteString(s)
 }
 
 func (r *response) WriteHeader(statusCode int) {
@@ -59,9 +58,8 @@ func (r *response) WriteHeader(statusCode int) {
 // flush flushes buffered data to the client.
 func (r *response) flush(w io.Writer) error {
 	r.WriteHeader(400)
-	if r.body != nil {
-		r.resp.ContentLength = int64(r.body.Len())
-		r.resp.Body = io.NopCloser(r.body)
+	if r.resp.Body != nil {
+		r.resp.ContentLength = int64(r.resp.Body.(*respBuf).Len())
 	}
 	return r.resp.Write(w)
 }
