@@ -48,20 +48,21 @@ func ListenAndServeTLS(srv *http.Server, certFile, keyFile string) error {
 }
 
 func NewListener(inner net.Listener, srv *http.Server) net.Listener {
-	l, ok := inner.(*Listener)
-	if !ok {
-		l = &Listener{Listener: inner}
+	if _, ok := inner.(isMyListener); ok {
+		return inner
 	}
-	l.HttpServer = srv
-	return l
+	return &listener{
+		Listener: inner,
+		srv:      srv,
+	}
 }
 
-type Listener struct {
+type listener struct {
 	net.Listener
-	HttpServer *http.Server
+	srv *http.Server
 }
 
-func (l *Listener) Accept() (c net.Conn, err error) {
+func (l *listener) Accept() (c net.Conn, err error) {
 	c, err = l.Listener.Accept()
 	if err == nil {
 		c = &conn{
@@ -72,15 +73,21 @@ func (l *Listener) Accept() (c net.Conn, err error) {
 	return
 }
 
+type isMyListener interface {
+	IsHttpsListenerForHttpRedirect()
+}
+
+func (l *listener) IsHttpsListenerForHttpRedirect() {}
+
 type conn struct {
 	net.Conn
 	// Reading TLS if nil
-	l *Listener
+	l *listener
 }
 
 func (c *conn) maxHeaderLen() int {
-	if c.l.HttpServer != nil && c.l.HttpServer.MaxHeaderBytes != 0 {
-		return c.l.HttpServer.MaxHeaderBytes
+	if c.l.srv != nil && c.l.srv.MaxHeaderBytes != 0 {
+		return c.l.srv.MaxHeaderBytes
 	}
 	return http.DefaultMaxHeaderBytes
 }

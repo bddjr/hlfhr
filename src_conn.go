@@ -12,12 +12,12 @@ var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS ser
 type conn struct {
 	net.Conn
 	// Reading TLS if nil
-	l *Listener
+	l *listener
 }
 
 func (c *conn) log(v ...any) {
-	if c.l.HttpServer != nil && c.l.HttpServer.ErrorLog != nil {
-		c.l.HttpServer.ErrorLog.Print(v...)
+	if c.l.srv != nil && c.l.srv.ErrorLog != nil {
+		c.l.srv.ErrorLog.Print(v...)
 	} else {
 		log.Print(v...)
 	}
@@ -25,7 +25,7 @@ func (c *conn) log(v ...any) {
 
 func (c *conn) readRequest(b []byte, n int) (req *http.Request, errStr string) {
 	rd := &MaxHeaderBytesReader{Rd: c.Conn}
-	rd.SetMax(c.l.HttpServer)
+	rd.SetMax(c.l.srv)
 	rd.Max -= n
 
 	br := NewBufioReaderWithBytes(b, n, rd)
@@ -68,9 +68,9 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	// Response
 	w := newResponse()
-	if c.l.HttpOnHttpsPortErrorHandler != nil {
+	if c.l.handler != nil {
 		// Handler
-		c.l.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+		c.l.handler.ServeHTTP(w, r)
 	} else {
 		// Redirect
 		RedirectToHttps(w, r, 302)
