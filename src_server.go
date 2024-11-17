@@ -28,14 +28,6 @@ func NewServer(s *http.Server) *Server {
 	return &Server{Server: s}
 }
 
-func (s *Server) NewListener(l net.Listener) net.Listener {
-	return NewListener(
-		l,
-		s.Server,
-		s.HttpOnHttpsPortErrorHandler,
-	)
-}
-
 // ServeTLS accepts incoming connections on the Listener l, creating a
 // new service goroutine for each. The service goroutines perform TLS
 // setup and then read requests, calling srv.Handler to reply to them.
@@ -50,7 +42,7 @@ func (s *Server) NewListener(l net.Listener) net.Listener {
 // ServeTLS always returns a non-nil error. After [Server.Shutdown] or [Server.Close], the
 // returned error is [http.ErrServerClosed].
 func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
-	l = s.NewListener(l)
+	l = NewListener(l, s.Server, s.HttpOnHttpsPortErrorHandler)
 	return s.Server.ServeTLS(l, certFile, keyFile)
 }
 
@@ -111,11 +103,17 @@ func (s *Server) ListenAndServeTLS(certFile string, keyFile string) error {
 // is signed by a certificate authority, the certFile should be the concatenation
 // of the server's certificate, any intermediates, and the CA's certificate.
 func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) error {
-	srv := New(&http.Server{
-		Addr:    addr,
-		Handler: handler,
-	})
-	return srv.ListenAndServeTLS(certFile, keyFile)
+	if addr == "" {
+		addr = ":https"
+	}
+
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	defer l.Close()
+
+	return ServeTLS(l, handler, certFile, keyFile)
 }
 
 func IsHttpServerShuttingDown(srv *http.Server) bool {

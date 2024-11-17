@@ -206,14 +206,6 @@ var srv *hlfhr.Server
 isShuttingDown := srv.IsShuttingDown()
 ```
 
-#### Server.NewListener
-
-```go
-var l net.Listener
-var srv *http.Server
-l = hlfhr.New(srv).NewListener(l)
-```
-
 #### NewListener
 
 ```go
