@@ -67,7 +67,8 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 //
 // ServeTLS always returns a non-nil error.
 func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) error {
-	srv := New(&http.Server{Handler: handler})
+	srv := &http.Server{Handler: handler}
+	l = NewListener(l, srv, nil)
 	return srv.ServeTLS(l, certFile, keyFile)
 }
 
