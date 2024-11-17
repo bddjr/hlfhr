@@ -215,20 +215,6 @@ var h http.Handler
 l = hlfhr.NewListener(c, srv, h)
 ```
 
-#### IsMyListener
-
-```go
-var l net.Listener
-isHlfhrListener := hlfhr.IsMyListener(l)
-```
-
-#### IsMyConn
-
-```go
-var c net.Conn
-isHlfhrConn := hlfhr.IsMyConn(c)
-```
-
 #### ConnFirstByteLooksLikeHttp
 
 ```go

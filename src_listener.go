@@ -12,11 +12,6 @@ type Listener struct {
 	HttpOnHttpsPortErrorHandler http.Handler
 }
 
-func IsMyListener(inner net.Listener) bool {
-	_, ok := inner.(*Listener)
-	return ok
-}
-
 func NewListener(
 	inner net.Listener,
 	httpServer *http.Server,

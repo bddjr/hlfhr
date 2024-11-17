@@ -15,11 +15,6 @@ type conn struct {
 	l *Listener
 }
 
-func IsMyConn(inner net.Conn) bool {
-	_, ok := inner.(*conn)
-	return ok
-}
-
 func (c *conn) log(v ...any) {
 	if c.l.HttpServer != nil && c.l.HttpServer.ErrorLog != nil {
 		c.l.HttpServer.ErrorLog.Print(v...)
