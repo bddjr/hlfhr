@@ -4,6 +4,7 @@
 package hlfhr
 
 import (
+	"crypto/tls"
 	"net"
 	"net/http"
 	"reflect"
@@ -28,14 +29,6 @@ func NewServer(s *http.Server) *Server {
 	return &Server{Server: s}
 }
 
-func (s *Server) NewListener(l net.Listener) net.Listener {
-	return NewListener(
-		l,
-		s.Server,
-		s.HttpOnHttpsPortErrorHandler,
-	)
-}
-
 // ServeTLS accepts incoming connections on the Listener l, creating a
 // new service goroutine for each. The service goroutines perform TLS
 // setup and then read requests, calling srv.Handler to reply to them.
@@ -50,8 +43,31 @@ func (s *Server) NewListener(l net.Listener) net.Listener {
 // ServeTLS always returns a non-nil error. After [Server.Shutdown] or [Server.Close], the
 // returned error is [http.ErrServerClosed].
 func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
-	l = s.NewListener(l)
-	return s.Server.ServeTLS(l, certFile, keyFile)
+	// clone tls config
+	var config *tls.Config
+	if s.TLSConfig != nil {
+		config = s.TLSConfig.Clone()
+	} else {
+		config = &tls.Config{}
+	}
+
+	// copy from "net/http"
+	// if !slices.Contains(config.NextProtos, "http/1.1") {
+	// 	config.NextProtos = append(config.NextProtos, "http/1.1")
+	// }
+
+	configHasCert := len(config.Certificates) > 0 || config.GetCertificate != nil || config.GetConfigForClient != nil
+	if !configHasCert || certFile != "" || keyFile != "" {
+		var err error
+		config.Certificates = make([]tls.Certificate, 1)
+		config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	// serve
+	return s.Server.Serve(newTLSListener(l, config, s))
 }
 
 // ServeTLS accepts incoming HTTPS connections on the listener l,
@@ -67,8 +83,7 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 //
 // ServeTLS always returns a non-nil error.
 func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) error {
-	srv := &http.Server{Handler: handler}
-	l = NewListener(l, srv, nil)
+	srv := New(&http.Server{Handler: handler})
 	return srv.ServeTLS(l, certFile, keyFile)
 }
 

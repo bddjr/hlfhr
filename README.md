@@ -1,5 +1,8 @@
 # HTTPS Listener For HTTP Redirect
 
+> [!WARNING]
+> 使用该分支会导致 HTTP2 失效
+
 If client sent an HTTP request to an HTTPS server `port`, returns [302 redirection](https://developer.mozilla.org/docs/Web/HTTP/Status/302), like [nginx](https://nginx.org)'s ["error_page 497"](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors).
 
 Related issue: https://github.com/golang/go/issues/49310
@@ -102,36 +105,7 @@ func main() {
 	}
 	defer l.Close()
 
-	// Must use ServeTLS! For issue https://github.com/bddjr/hlfhr/issues/4
-	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
-	fmt.Println(err)
-}
-```
-
-```go
-// Use hlfhr.NewListener
-
-func main() {
-	srv = &http.Server{
-		Addr: ":5678",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Write something...
-		}),
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	l, err := net.Listen("tcp", srv.Addr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer l.Close()
-
-	// Use hlfhr.NewListener
-	var httpOnHttpsPortErrorHandler http.Handler = nil
-	l = hlfhr.NewListener(l, srv, httpOnHttpsPortErrorHandler)
-
-	// Must use ServeTLS! For issue https://github.com/bddjr/hlfhr/issues/4
+	// Must use ServeTLS!
 	err = srv.ServeTLS(l, "localhost.crt", "localhost.key")
 	fmt.Println(err)
 }
@@ -204,37 +178,6 @@ isShuttingDown := hlfhr.IsHttpServerShuttingDown(srv)
 ```go
 var srv *hlfhr.Server
 isShuttingDown := srv.IsShuttingDown()
-```
-
-#### Server.NewListener
-
-```go
-var l net.Listener
-var srv *http.Server
-l = hlfhr.New(srv).NewListener(l)
-```
-
-#### NewListener
-
-```go
-var l net.Listener
-var srv *http.Server
-var h http.Handler
-l = hlfhr.NewListener(c, srv, h)
-```
-
-#### IsMyListener
-
-```go
-var l net.Listener
-isHlfhrListener := hlfhr.IsMyListener(l)
-```
-
-#### IsMyConn
-
-```go
-var c net.Conn
-isHlfhrConn := hlfhr.IsMyConn(c)
 ```
 
 #### ConnFirstByteLooksLikeHttp
@@ -346,6 +289,7 @@ https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors
 
 https://github.com/golang/go/issues/49310  
 https://github.com/golang/go/issues/66501
+https://github.com/mzky/utils/blob/master/hook/server.go
 
 "net/http"  
 "net"  

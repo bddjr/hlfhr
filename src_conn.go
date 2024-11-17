@@ -2,6 +2,7 @@ package hlfhr
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -11,18 +12,21 @@ var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS ser
 
 type conn struct {
 	net.Conn
-	// Reading TLS if nil
-	l *Listener
+	setReadingTLS func()
+	l             *TLSListener
 }
 
-func IsMyConn(inner net.Conn) bool {
-	_, ok := inner.(*conn)
-	return ok
+func (c *conn) srv() *http.Server {
+	if srv := c.l.srv; srv != nil {
+		return srv.Server
+	}
+	return nil
 }
 
 func (c *conn) log(v ...any) {
-	if c.l.HttpServer != nil && c.l.HttpServer.ErrorLog != nil {
-		c.l.HttpServer.ErrorLog.Print(v...)
+	s := c.srv()
+	if s != nil && s.ErrorLog != nil {
+		s.ErrorLog.Print(v...)
 	} else {
 		log.Print(v...)
 	}
@@ -30,7 +34,7 @@ func (c *conn) log(v ...any) {
 
 func (c *conn) readRequest(b []byte, n int) (req *http.Request, errStr string) {
 	rd := &MaxHeaderBytesReader{Rd: c.Conn}
-	rd.SetMax(c.l.HttpServer)
+	rd.SetMax(c.srv())
 	rd.Max -= n
 
 	br := NewBufioReaderWithBytes(b, n, rd)
@@ -48,15 +52,16 @@ func (c *conn) readRequest(b []byte, n int) (req *http.Request, errStr string) {
 }
 
 func (c *conn) Read(b []byte) (int, error) {
+	fmt.Println("hlfhr read")
 	n, err := c.Conn.Read(b)
-	if c.l == nil || err != nil || n <= 0 {
+	if err != nil || n <= 0 {
 		return n, err
 	}
 
 	if !ConnFirstByteLooksLikeHttp(b[0]) {
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
-		c.l = nil
+		c.setReadingTLS()
 		return n, nil
 	}
 
@@ -73,9 +78,9 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	// Response
 	w := newResponse()
-	if c.l.HttpOnHttpsPortErrorHandler != nil {
+	if h := c.l.srv.HttpOnHttpsPortErrorHandler; h != nil {
 		// Handler
-		c.l.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+		h.ServeHTTP(w, r)
 	} else {
 		// Redirect
 		RedirectToHttps(w, r, 302)
