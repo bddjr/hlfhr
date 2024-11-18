@@ -14,7 +14,7 @@ import (
 //
 // "Connection" header always set "close".
 type Response struct {
-	status int
+	status int // Default: 500
 	header http.Header
 	body   []byte
 }
@@ -34,13 +34,20 @@ func (r *Response) Header() http.Header {
 	return http.Header{}
 }
 
+// Set status code and lock header, if header does not locked.
+// If input 0, set 500.
 func (r *Response) WriteHeader(statusCode int) {
 	if r.status == 0 {
-		r.status = statusCode
+		if statusCode == 0 {
+			r.status = 500
+		} else {
+			r.status = statusCode
+		}
 	}
 }
 
 func (r *Response) Write(b []byte) (int, error) {
+	r.WriteHeader(0)
 	if len(b) > 0 {
 		r.body = append(r.body, b...)
 	}
@@ -48,6 +55,7 @@ func (r *Response) Write(b []byte) (int, error) {
 }
 
 func (r *Response) WriteString(s string) (int, error) {
+	r.WriteHeader(0)
 	if len(s) > 0 {
 		r.body = append(r.body, s...)
 	}
@@ -57,7 +65,7 @@ func (r *Response) WriteString(s string) (int, error) {
 // Flush flushes buffered data to the client.
 func (r *Response) Flush(w io.Writer) error {
 	// status
-	r.WriteHeader(400)
+	r.WriteHeader(0)
 	_, err := fmt.Fprint(w, "HTTP/1.1 ", r.status, " ", http.StatusText(r.status), "\r\n")
 	if err != nil {
 		return err
