@@ -236,6 +236,7 @@ isShuttingDown := srv.IsShuttingDown()
 ```
 
 #### NewResponse
+
 ```go
 var c net.Conn
 var h http.Handler
@@ -295,7 +296,9 @@ https://github.com/golang/go/issues/66501
 "net/http"  
 "net"  
 "crypto/tls"  
-"reflect"
+"reflect"  
+"bufio"  
+"bytes"
 
 ---
 
