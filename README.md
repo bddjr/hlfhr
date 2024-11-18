@@ -23,7 +23,7 @@ go get github.com/bddjr/hlfhr
 srv := hlfhr.New(&http.Server{
 	// Write something...
 })
-// Then just use it like http.Server
+// Then just use it like [http.Server]
 err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
 ```
 
@@ -117,32 +117,34 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 #### New
 
 ```go
-srv := hlfhr.New(&http.Server{})
+srv := hlfhr.New(&http.Server{
+	// Write something...
+})
 ```
 
 #### NewServer
 
 ```go
-srv := hlfhr.NewServer(&http.Server{})
+srv := hlfhr.NewServer(&http.Server{
+	// Write something...
+})
 ```
 
 #### ListenAndServeTLS
 
 ```go
-// Just use it like http.ListenAndServeTLS
-err := hlfhr.ListenAndServeTLS(":443", "localhost.crt", "localhost.key", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// Write something...
-}))
+// Just use it like [http.ListenAndServeTLS]
+var h http.Handler
+err := hlfhr.ListenAndServeTLS(":443", "localhost.crt", "localhost.key", h)
 ```
 
 #### ServeTLS
 
 ```go
-// Just use it like http.ListenAndServeTLS
+// Just use it like [http.ServeTLS]
 var l net.Listener
-err := hlfhr.ServeTLS(l, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// Write something...
-}), "localhost.crt", "localhost.key")
+var h http.Handler
+err := hlfhr.ServeTLS(l, h, "localhost.crt", "localhost.key")
 ```
 
 #### IsHttpServerShuttingDown
