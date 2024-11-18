@@ -126,6 +126,25 @@ srv := hlfhr.New(&http.Server{})
 srv := hlfhr.NewServer(&http.Server{})
 ```
 
+#### ListenAndServeTLS
+
+```go
+// Just use it like http.ListenAndServeTLS
+err := hlfhr.ListenAndServeTLS(":443", "localhost.crt", "localhost.key", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Write something...
+}))
+```
+
+#### ServeTLS
+
+```go
+// Just use it like http.ListenAndServeTLS
+var l net.Listener
+err := hlfhr.ServeTLS(l, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Write something...
+}), "localhost.crt", "localhost.key")
+```
+
 #### IsHttpServerShuttingDown
 
 ```go
