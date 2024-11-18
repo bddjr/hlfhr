@@ -67,7 +67,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	}
 
 	// Response
-	w := newResponse()
+	w := NewResponse()
 	if c.l.HttpOnHttpsPortErrorHandler != nil {
 		// Handler
 		c.l.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
@@ -77,7 +77,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	}
 
 	// Write
-	err = w.flush(c.Conn)
+	err = w.Flush(c.Conn)
 	if err != nil {
 		c.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
 	}

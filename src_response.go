@@ -1,70 +1,84 @@
 package hlfhr
 
+// v1.2.3 not use [http.Response]
+
 import (
-	"bytes"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 )
 
-type response struct {
-	r http.Response
+// Using for interface [http.ResponseWriter] and [io.StringWriter].
+//
+// "Connection" header always set "close".
+type Response struct {
+	status int
+	header http.Header
+	body   []byte
 }
 
-func newResponse() *response {
-	return &response{http.Response{
-		ProtoMajor: 1,
-		ProtoMinor: 1,
-		Close:      true,
-		Header: http.Header{
+func NewResponse() *Response {
+	return &Response{
+		header: http.Header{
 			"Date": []string{time.Now().UTC().Format(http.TimeFormat)},
 		},
-	}}
-}
-
-func (r *response) Header() http.Header {
-	if r.r.StatusCode != 0 {
-		// wrote header
-		return http.Header{}
-	}
-	return r.r.Header
-}
-
-func (r *response) WriteHeader(statusCode int) {
-	if r.r.StatusCode == 0 {
-		// not wrote header
-		r.r.StatusCode = statusCode
 	}
 }
 
-type respBuf struct {
-	*bytes.Buffer
-	io.Closer
-}
-
-func (r *response) Write(b []byte) (int, error) {
-	if r.r.Body == nil {
-		r.r.Body = &respBuf{Buffer: bytes.NewBuffer(b)}
-		return len(b), nil
+func (r *Response) Header() http.Header {
+	if r.status == 0 {
+		return r.header
 	}
-	return r.r.Body.(*respBuf).Write(b)
+	return http.Header{}
 }
 
-func (r *response) WriteString(s string) (int, error) {
-	if r.r.Body == nil {
-		r.r.Body = &respBuf{Buffer: bytes.NewBufferString(s)}
-		return len(s), nil
+func (r *Response) WriteHeader(statusCode int) {
+	if r.status == 0 {
+		r.status = statusCode
 	}
-	return r.r.Body.(*respBuf).WriteString(s)
 }
 
-// flush flushes buffered data to the client.
-func (r *response) flush(w io.WriteCloser) error {
+func (r *Response) Write(b []byte) (int, error) {
+	if len(b) > 0 {
+		r.body = append(r.body, b...)
+	}
+	return len(b), nil
+}
+
+func (r *Response) WriteString(s string) (int, error) {
+	if len(s) > 0 {
+		r.body = append(r.body, s...)
+	}
+	return len(s), nil
+}
+
+// Flush flushes buffered data to the client.
+func (r *Response) Flush(w io.Writer) error {
+	// status
 	r.WriteHeader(400)
-	if r.r.Body != nil {
-		b := r.r.Body.(*respBuf)
-		r.r.ContentLength = int64(b.Len())
-		b.Closer = w
+	_, err := fmt.Fprint(w, "HTTP/1.1 ", r.status, " ", http.StatusText(r.status), "\r\n")
+	if err != nil {
+		return err
 	}
-	return r.r.Write(w)
+
+	// header
+	r.header.Set("Connection", "close")
+	r.header.Set("Content-Length", strconv.Itoa(len(r.body)))
+	err = r.header.Write(w)
+	if err == nil {
+		_, err = io.WriteString(w, "\r\n")
+	}
+
+	if err != nil || len(r.body) == 0 {
+		return err
+	}
+
+	// body
+	n, err := w.Write(r.body)
+	if err == nil && n != len(r.body) {
+		return io.ErrShortWrite
+	}
+	return err
 }

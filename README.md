@@ -147,20 +147,6 @@ var h http.Handler
 err := hlfhr.ServeTLS(l, h, "localhost.crt", "localhost.key")
 ```
 
-#### IsHttpServerShuttingDown
-
-```go
-var srv *http.Server
-isShuttingDown := hlfhr.IsHttpServerShuttingDown(srv)
-```
-
-#### Server.IsShuttingDown
-
-```go
-var srv *hlfhr.Server
-isShuttingDown := srv.IsShuttingDown()
-```
-
 #### NewListener
 
 ```go
@@ -168,22 +154,6 @@ var l net.Listener
 var srv *http.Server
 var h http.Handler
 l = hlfhr.NewListener(c, srv, h)
-```
-
-#### ConnFirstByteLooksLikeHttp
-
-```go
-b := []byte("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
-looksLikeHttp := hlfhr.ConnFirstByteLooksLikeHttp(b[0])
-```
-
-#### NewBufioReaderWithBytes
-
-```go
-var c net.Conn
-var b []byte
-n, err := c.Read(b)
-br := hlfhr.NewBufioReaderWithBytes(b, n, c)
 ```
 
 #### Redirect
@@ -249,6 +219,48 @@ Host := hlfhr.ReplacePort("[::1]:5678", "7890")
 ```go
 v6 := hlfhr.Ipv6CutPrefixSuffix("[::1]")
 // v6: ::1
+```
+
+#### IsHttpServerShuttingDown
+
+```go
+var srv *http.Server
+isShuttingDown := hlfhr.IsHttpServerShuttingDown(srv)
+```
+
+#### Server.IsShuttingDown
+
+```go
+var srv *hlfhr.Server
+isShuttingDown := srv.IsShuttingDown()
+```
+
+#### NewResponse
+```go
+var c net.Conn
+var h http.Handler
+var r *http.Request
+
+w := NewResponse()
+
+h.ServeHTTP(w, r)
+err := w.Flush(c)
+```
+
+#### ConnFirstByteLooksLikeHttp
+
+```go
+b := []byte("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+looksLikeHttp := hlfhr.ConnFirstByteLooksLikeHttp(b[0])
+```
+
+#### NewBufioReaderWithBytes
+
+```go
+var c net.Conn
+var b []byte
+n, err := c.Read(b)
+br := hlfhr.NewBufioReaderWithBytes(b, n, c)
 ```
 
 ---
