@@ -152,8 +152,8 @@ err := hlfhr.ServeTLS(l, h, "localhost.crt", "localhost.key")
 ```go
 var l net.Listener
 var srv *http.Server
-var h http.Handler
-l = hlfhr.NewListener(c, srv, h)
+var HttpOnHttpsPortErrorHandler http.Handler
+l = hlfhr.NewListener(l, srv, HttpOnHttpsPortErrorHandler)
 ```
 
 #### Redirect
