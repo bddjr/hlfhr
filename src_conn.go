@@ -2,6 +2,7 @@ package hlfhr
 
 import (
 	"errors"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -24,13 +25,16 @@ func (c *conn) log(v ...any) {
 }
 
 func (c *conn) readRequest(b []byte, n int) (req *http.Request, errStr string) {
-	rd := &MaxHeaderBytesReader{Rd: c.Conn}
-	rd.SetMax(c.l.srv)
-	rd.Max -= n
+	rd := &io.LimitedReader{
+		R: c.Conn,
+		N: http.DefaultMaxHeaderBytes,
+	}
+	if c.l.srv != nil && c.l.srv.MaxHeaderBytes != 0 {
+		rd.N = int64(c.l.srv.MaxHeaderBytes)
+	}
+	rd.N -= int64(n)
 
-	br := NewBufioReaderWithBytes(b, n, rd)
-
-	req, err := http.ReadRequest(br)
+	req, err := http.ReadRequest(NewBufioReaderWithBytes(b, n, rd))
 	if err != nil {
 		return nil, err.Error()
 	}
@@ -38,7 +42,7 @@ func (c *conn) readRequest(b []byte, n int) (req *http.Request, errStr string) {
 		return nil, "missing required Host header"
 	}
 
-	rd.SetReadingBody()
+	rd.N = int64(^uint64(0) >> 1) // 8388607 TiB
 	return req, ""
 }
 
