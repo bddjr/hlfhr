@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Using for interface [http.ResponseWriter] and [io.StringWriter].
+// Using for interface [http.ResponseWriter], [io.StringWriter], [io.ByteWriter].
 //
 // "Connection" header always set "close".
 type Response struct {
@@ -48,7 +48,7 @@ func (r *Response) WriteHeader(statusCode int) {
 
 func (r *Response) Write(b []byte) (int, error) {
 	r.WriteHeader(0)
-	if len(b) > 0 {
+	if len(b) != 0 {
 		r.body = append(r.body, b...)
 	}
 	return len(b), nil
@@ -56,10 +56,16 @@ func (r *Response) Write(b []byte) (int, error) {
 
 func (r *Response) WriteString(s string) (int, error) {
 	r.WriteHeader(0)
-	if len(s) > 0 {
+	if len(s) != 0 {
 		r.body = append(r.body, s...)
 	}
 	return len(s), nil
+}
+
+func (r *Response) WriteByte(c byte) error {
+	r.WriteHeader(0)
+	r.body = append(r.body, c)
+	return nil
 }
 
 // Flush flushes buffered data to the client.
