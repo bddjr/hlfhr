@@ -24,7 +24,7 @@ func (c *conn) log(v ...any) {
 	}
 }
 
-func (c *conn) readRequest(b []byte, n int) (req *http.Request, errStr string) {
+func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
 	rd := &io.LimitedReader{
 		R: c.Conn,
 		N: http.DefaultMaxHeaderBytes,
@@ -35,15 +35,11 @@ func (c *conn) readRequest(b []byte, n int) (req *http.Request, errStr string) {
 	rd.N -= int64(n)
 
 	req, err := http.ReadRequest(NewBufioReaderWithBytes(b, n, rd))
-	if err != nil {
-		return nil, err.Error()
+	if err == nil {
+		// 8388607 TiB
+		rd.N = int64(^uint64(0) >> 1)
 	}
-	if req.Host == "" {
-		return nil, "missing required Host header"
-	}
-
-	rd.N = int64(^uint64(0) >> 1) // 8388607 TiB
-	return req, ""
+	return req, err
 }
 
 func (c *conn) Read(b []byte) (int, error) {
@@ -64,9 +60,15 @@ func (c *conn) Read(b []byte) (int, error) {
 	defer c.Conn.Close()
 
 	// Read request
-	r, errStr := c.readRequest(b, n)
-	if r == nil {
-		c.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", errStr)
+	r, err := c.readRequest(b, n)
+	if err != nil {
+		c.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
+		return 0, ErrHttpOnHttpsPort
+	}
+	if r.Host == "" {
+		const err = "missing required Host header"
+		io.WriteString(c.Conn, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"+err)
+		c.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": "+err)
 		return 0, ErrHttpOnHttpsPort
 	}
 
