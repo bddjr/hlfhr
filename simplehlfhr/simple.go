@@ -4,7 +4,6 @@
 package simplehlfhr
 
 import (
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -16,16 +15,11 @@ import (
 	"github.com/bddjr/hlfhr"
 )
 
-const respBody = "<script>location.protocol='https:'</script>"
-
-var resp = fmt.Append(nil,
-	"HTTP/1.1 300 Multiple Choices\r\n",
-	"Connection: close\r\n",
-	"Content-Type: text/html\r\n",
-	"Content-Length: ", len(respBody), "\r\n",
-	"\r\n",
-	respBody,
-)
+const resp = "HTTP/1.1 300 Multiple Choices\r\n" +
+	"Connection: close\r\n" +
+	"Content-Type: text/html\r\n" +
+	"\r\n" +
+	"<script>location.protocol='https:'</script>"
 
 func ListenAndServeTLS(srv *http.Server, certFile, keyFile string) error {
 	if hlfhr.IsHttpServerShuttingDown(srv) {
@@ -111,7 +105,7 @@ func (c *conn) Read(b []byte) (int, error) {
 				}
 				if i-lastLF <= len("\r\n") {
 					// Script Redirect
-					c.Conn.Write(resp)
+					io.WriteString(c.Conn, resp)
 					return 0, hlfhr.ErrHttpOnHttpsPort
 				}
 				lastLF = i
