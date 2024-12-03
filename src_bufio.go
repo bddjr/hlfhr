@@ -3,35 +3,34 @@ package hlfhr
 import (
 	"bufio"
 	"io"
-	"reflect"
 	"unsafe"
 )
 
-const brMinBufSize = 16
-
-const brFieldBufIndex = 0
-const brFieldWIndex = 3
-
 func NewBufioReaderWithBytes(buf []byte, contentLength int, rd io.Reader) *bufio.Reader {
-	br := &bufio.Reader{}
-	rv := reflect.ValueOf(br).Elem()
+	// copy from bufio.Reader
+	type br struct {
+		buf          []byte
+		rd           io.Reader // reader provided by the client
+		r, w         int       // buf read and write positions
+		err          error
+		lastByte     int // last byte read for UnreadByte; -1 means invalid
+		lastRuneSize int // size of last rune read for UnreadRune; -1 means invalid
+	}
 
-	// fill buffer
-	if len(buf) < brMinBufSize {
-		nb := make([]byte, brMinBufSize)
+	// copy from bufio.minReadBufferSize
+	const minReadBufferSize = 16
+
+	if len(buf) < minReadBufferSize {
+		nb := make([]byte, minReadBufferSize)
 		copy(nb, buf)
 		buf = nb
 	}
-	*(*[]byte)(unsafe.Pointer(rv.Field(brFieldBufIndex).UnsafeAddr())) = buf
 
-	// fill reader
-	br.Reset(rd)
-
-	// fill length
-	if contentLength > 0 {
-		*(*int)(unsafe.Pointer(rv.Field(brFieldWIndex).UnsafeAddr())) =
-			min(contentLength, len(buf))
-	}
-
-	return br
+	return (*bufio.Reader)(unsafe.Pointer(&br{
+		buf:          buf,
+		rd:           rd,
+		w:            contentLength,
+		lastByte:     -1,
+		lastRuneSize: -1,
+	}))
 }
