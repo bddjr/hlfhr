@@ -4,8 +4,6 @@ If client sent an HTTP request to an HTTPS server `port`, returns [302 redirecti
 
 Related issue: https://github.com/golang/go/issues/49310
 
-Simple version: [simplehlfhr](simplehlfhr)
-
 ---
 
 ## Get
