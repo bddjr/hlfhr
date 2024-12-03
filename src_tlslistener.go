@@ -1,36 +1,29 @@
 package hlfhr
 
 import (
+	"crypto/tls"
 	"net"
-	"net/http"
 )
 
-type Listener struct {
+type TLSListener struct {
 	net.Listener
-	srv                         *http.Server
-	HttpOnHttpsPortErrorHandler http.Handler
+	TLSConf *tls.Config
+	Server  *Server
 }
 
-func NewListener(
-	inner net.Listener,
-	srv *http.Server,
-	httpOnHttpsPortErrorHandler http.Handler,
-) net.Listener {
-	return &Listener{
-		Listener:                    inner,
-		srv:                         srv,
-		HttpOnHttpsPortErrorHandler: httpOnHttpsPortErrorHandler,
+func (l *TLSListener) Accept() (net.Conn, error) {
+	c, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
 	}
-}
 
-func (l *Listener) Accept() (c net.Conn, err error) {
-	c, err = l.Listener.Accept()
-	if err == nil {
-		// Hijacking net.Conn
-		c = &conn{
-			Conn: c,
-			l:    l,
-		}
+	mc := new(conn)
+	tc := tls.Server(mc, l.TLSConf)
+
+	*mc = conn{
+		Conn: c,
+		tc:   tc,
+		srv:  l.Server,
 	}
-	return
+	return tc, nil
 }

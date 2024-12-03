@@ -1,24 +1,32 @@
 package hlfhr
 
 import (
+	"crypto/tls"
 	"errors"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"unsafe"
 )
 
 var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
 
 type conn struct {
 	net.Conn
-	// Reading TLS if nil
-	l *Listener
+	tc  *tls.Conn
+	srv *Server
+}
+
+func (c *conn) setRawConn() {
+	(*struct {
+		conn net.Conn
+	})(unsafe.Pointer(c.tc)).conn = c.Conn
 }
 
 func (c *conn) log(v ...any) {
-	if c.l.srv != nil && c.l.srv.ErrorLog != nil {
-		c.l.srv.ErrorLog.Print(v...)
+	if c.srv.ErrorLog != nil {
+		c.srv.ErrorLog.Print(v...)
 	} else {
 		log.Print(v...)
 	}
@@ -29,8 +37,8 @@ func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
 		R: c.Conn,
 		N: http.DefaultMaxHeaderBytes,
 	}
-	if c.l.srv != nil && c.l.srv.MaxHeaderBytes != 0 {
-		rd.N = int64(c.l.srv.MaxHeaderBytes)
+	if c.srv.MaxHeaderBytes != 0 {
+		rd.N = int64(c.srv.MaxHeaderBytes)
 	}
 	rd.N -= int64(n)
 
@@ -44,14 +52,14 @@ func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
 
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if c.l == nil || err != nil || n <= 0 {
+	if err != nil || n <= 0 {
 		return n, err
 	}
 
 	if !ConnFirstByteLooksLikeHttp(b[0]) {
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
-		c.l = nil
+		c.setRawConn()
 		return n, nil
 	}
 
@@ -74,9 +82,9 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	// Response
 	w := NewResponse()
-	if c.l.HttpOnHttpsPortErrorHandler != nil {
+	if c.srv.HttpOnHttpsPortErrorHandler != nil {
 		// Handler
-		c.l.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+		c.srv.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
 	} else {
 		// Redirect
 		RedirectToHttps(w, r, 302)

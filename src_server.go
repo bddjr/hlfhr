@@ -4,11 +4,14 @@
 package hlfhr
 
 import (
+	"crypto/tls"
 	"net"
 	"net/http"
 	"reflect"
 	"sync/atomic"
 	"unsafe"
+
+	"golang.org/x/net/http2"
 )
 
 type Server struct {
@@ -21,12 +24,15 @@ type Server struct {
 
 // New hlfhr Server
 func New(s *http.Server) *Server {
+	if s == nil {
+		s = new(http.Server)
+	}
 	return &Server{Server: s}
 }
 
 // New hlfhr Server
 func NewServer(s *http.Server) *Server {
-	return &Server{Server: s}
+	return New(s)
 }
 
 // ServeTLS accepts incoming connections on the Listener l, creating a
@@ -43,8 +49,37 @@ func NewServer(s *http.Server) *Server {
 // ServeTLS always returns a non-nil error. After [Server.Shutdown] or [Server.Close], the
 // returned error is [http.ErrServerClosed].
 func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
-	l = NewListener(l, s.Server, s.HttpOnHttpsPortErrorHandler)
-	return s.Server.ServeTLS(l, certFile, keyFile)
+	// Setup HTTP/2 before srv.Serve, to initialize srv.TLSConfig
+	// before we clone it and create the TLS Listener.
+	err := http2.ConfigureServer(s.Server, nil)
+	if err != nil {
+		return err
+	}
+
+	// clone tls config
+	var config *tls.Config
+	if s.TLSConfig != nil {
+		config = s.TLSConfig.Clone()
+	} else {
+		config = &tls.Config{}
+	}
+
+	configHasCert := len(config.Certificates) > 0 || config.GetCertificate != nil || config.GetConfigForClient != nil
+	if !configHasCert || certFile != "" || keyFile != "" {
+		var err error
+		config.Certificates = make([]tls.Certificate, 1)
+		config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	// serve
+	return s.Server.Serve(&TLSListener{
+		Listener: l,
+		TLSConf:  config,
+		Server:   s,
+	})
 }
 
 // ServeTLS accepts incoming HTTPS connections on the listener l,
@@ -60,9 +95,9 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 //
 // ServeTLS always returns a non-nil error.
 func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) error {
-	srv := &http.Server{Handler: handler}
-	l = NewListener(l, srv, nil)
-	return srv.ServeTLS(l, certFile, keyFile)
+	return New(&http.Server{
+		Handler: handler,
+	}).ServeTLS(l, certFile, keyFile)
 }
 
 // ListenAndServeTLS listens on the TCP network address srv.Addr and
@@ -104,17 +139,10 @@ func (s *Server) ListenAndServeTLS(certFile string, keyFile string) error {
 // is signed by a certificate authority, the certFile should be the concatenation
 // of the server's certificate, any intermediates, and the CA's certificate.
 func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) error {
-	if addr == "" {
-		addr = ":https"
-	}
-
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return err
-	}
-	defer l.Close()
-
-	return ServeTLS(l, handler, certFile, keyFile)
+	return New(&http.Server{
+		Addr:    addr,
+		Handler: handler,
+	}).ListenAndServeTLS(certFile, keyFile)
 }
 
 func IsHttpServerShuttingDown(srv *http.Server) bool {

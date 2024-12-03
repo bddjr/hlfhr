@@ -35,18 +35,20 @@ err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
 flowchart TD
 	Read("Hijacking net.Conn.Read")
 
-	IsLooksLikeHTTP("First byte looks like HTTP?")
+	IsLooksLikeHTTP("First byte looks like HTTP ?")
 
 	Continue(["✅ Continue..."])
 
 	ReadRequest("🔍 Read request")
 
-	IsFindHostHeader("Find Host header?")
+	IsFindHostHeader("Find Host header ?")
 
 	IsHandlerExist("`
 	HttpOnHttpsPort
 	ErrorHandler
 	exist?`")
+
+	400BadRequest{{"❌ 400 Bad Request"}}
 
 	302Redirect{{"🟡 302 Redirect"}}
 
@@ -57,7 +59,7 @@ flowchart TD
     Read --> IsLooksLikeHTTP
     IsLooksLikeHTTP -- "🔐false" --> Continue
     IsLooksLikeHTTP -- "📄true" --> ReadRequest --> IsFindHostHeader
-    IsFindHostHeader -- "⛔false" --> Close
+    IsFindHostHeader -- "⛔false" --> 400BadRequest --> Close
     IsFindHostHeader -- "✅true" --> IsHandlerExist
 	IsHandlerExist -- "✖false" --> 302Redirect --> Close
 	IsHandlerExist -- "✅true" --> Handler --> Close
@@ -145,15 +147,6 @@ err := hlfhr.ListenAndServeTLS(":443", "localhost.crt", "localhost.key", h)
 var l net.Listener
 var h http.Handler
 err := hlfhr.ServeTLS(l, h, "localhost.crt", "localhost.key")
-```
-
-#### NewListener
-
-```go
-var l net.Listener
-var srv *http.Server
-var HttpOnHttpsPortErrorHandler http.Handler
-l = hlfhr.NewListener(l, srv, HttpOnHttpsPortErrorHandler)
 ```
 
 #### Redirect
