@@ -1,19 +1,27 @@
 package hlfhr
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"unsafe"
 )
 
 var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
 
 type conn struct {
 	net.Conn
-	setReadingTLS func()
-	l             *TLSListener
+	tlsConn *tls.Conn
+	l       *TLSListener
+}
+
+func (c *conn) setReadingTLS() {
+	(*struct {
+		conn net.Conn
+	})(unsafe.Pointer(c.tlsConn)).conn = c.Conn
 }
 
 func (c *conn) srv() *http.Server {

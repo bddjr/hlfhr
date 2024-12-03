@@ -3,13 +3,12 @@ package hlfhr
 import (
 	"crypto/tls"
 	"net"
-	"reflect"
 )
 
 type TLSListener struct {
 	net.Listener
-	// tlsConfig *tls.Config
-	srv *Server
+	tlsConfig *tls.Config
+	srv       *Server
 }
 
 func newTLSListener(
@@ -18,8 +17,9 @@ func newTLSListener(
 	srv *Server,
 ) net.Listener {
 	return &TLSListener{
-		Listener: tls.NewListener(l, config),
-		srv:      srv,
+		Listener:  l,
+		tlsConfig: config,
+		srv:       srv,
 	}
 }
 
@@ -29,19 +29,14 @@ func (l *TLSListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
-	tlsConn := c.(*tls.Conn)
-	innerConn := (*net.Conn)(reflect.ValueOf(tlsConn).Elem().FieldByName("conn").Addr().UnsafePointer())
-	oldInnerConn := *innerConn
-
 	myConn := &conn{
-		Conn: oldInnerConn,
+		Conn: c,
 		l:    l,
-		setReadingTLS: func() {
-			*innerConn = oldInnerConn
-		},
 	}
 
-	*innerConn = myConn
+	tlsConn := tls.Server(myConn, l.tlsConfig)
 
-	return c, nil
+	myConn.tlsConn = tlsConn
+
+	return tlsConn, nil
 }

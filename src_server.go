@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"reflect"
 	"sync/atomic"
+
+	"golang.org/x/net/http2"
 )
 
 type Server struct {
@@ -43,6 +45,11 @@ func NewServer(s *http.Server) *Server {
 // ServeTLS always returns a non-nil error. After [Server.Shutdown] or [Server.Close], the
 // returned error is [http.ErrServerClosed].
 func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
+	err := http2.ConfigureServer(s.Server, nil)
+	if err != nil {
+		return err
+	}
+
 	// clone tls config
 	var config *tls.Config
 	if s.TLSConfig != nil {
@@ -50,11 +57,6 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 	} else {
 		config = &tls.Config{}
 	}
-
-	// copy from "net/http"
-	// if !slices.Contains(config.NextProtos, "http/1.1") {
-	// 	config.NextProtos = append(config.NextProtos, "http/1.1")
-	// }
 
 	configHasCert := len(config.Certificates) > 0 || config.GetCertificate != nil || config.GetConfigForClient != nil
 	if !configHasCert || certFile != "" || keyFile != "" {
