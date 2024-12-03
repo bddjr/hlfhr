@@ -4,27 +4,32 @@ import (
 	"bufio"
 	"io"
 	"reflect"
+	"unsafe"
 )
+
+const brMinBufSize = 16
+
+const brFieldBufIndex = 0
+const brFieldWIndex = 3
 
 func NewBufioReaderWithBytes(buf []byte, contentLength int, rd io.Reader) *bufio.Reader {
 	br := &bufio.Reader{}
-	brElem := reflect.ValueOf(br).Elem()
+	rv := reflect.ValueOf(br).Elem()
 
 	// fill buffer
-	if len(buf) < 16 {
-		nb := make([]byte, 16)
+	if len(buf) < brMinBufSize {
+		nb := make([]byte, brMinBufSize)
 		copy(nb, buf)
 		buf = nb
 	}
-	*(*[]byte)(brElem.FieldByName("buf").Addr().UnsafePointer()) =
-		buf
+	*(*[]byte)(unsafe.Pointer(rv.Field(brFieldBufIndex).UnsafeAddr())) = buf
 
 	// fill reader
 	br.Reset(rd)
 
 	// fill length
 	if contentLength > 0 {
-		*(*int)(brElem.FieldByName("w").Addr().UnsafePointer()) =
+		*(*int)(unsafe.Pointer(rv.Field(brFieldWIndex).UnsafeAddr())) =
 			min(contentLength, len(buf))
 	}
 

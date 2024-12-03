@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"reflect"
 	"sync/atomic"
+	"unsafe"
 )
 
 type Server struct {
@@ -118,7 +119,7 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 
 func IsHttpServerShuttingDown(srv *http.Server) bool {
 	// Get private value
-	inShutdown := (*atomic.Bool)(reflect.ValueOf(srv).Elem().FieldByName("inShutdown").Addr().UnsafePointer())
+	inShutdown := (*atomic.Bool)(unsafe.Pointer(reflect.ValueOf(srv).Elem().FieldByName("inShutdown").UnsafeAddr()))
 	return inShutdown.Load()
 }
 
