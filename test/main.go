@@ -21,8 +21,7 @@ func main() {
 	srv = hlfhr.New(&http.Server{
 		Addr:              ":5678",
 		Handler:           http.HandlerFunc(httpResponseHandle),
-		ReadHeaderTimeout: 5 * time.Second,
-		IdleTimeout:       5 * time.Second,
+		ReadHeaderTimeout: time.Minute,
 	})
 	// Then just use it like http.Server .
 
