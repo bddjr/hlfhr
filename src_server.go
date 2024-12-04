@@ -10,8 +10,6 @@ import (
 	"reflect"
 	"sync/atomic"
 	"unsafe"
-
-	"golang.org/x/net/http2"
 )
 
 type Server struct {
@@ -49,20 +47,16 @@ func NewServer(s *http.Server) *Server {
 // ServeTLS always returns a non-nil error. After [Server.Shutdown] or [Server.Close], the
 // returned error is [http.ErrServerClosed].
 func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
-	// Setup HTTP/2 before srv.Serve, to initialize srv.TLSConfig
-	// before we clone it and create the TLS Listener.
-	err := http2.ConfigureServer(s.Server, nil)
-	if err != nil {
-		return err
+	// Setup HTTP/2
+	if s.TLSConfig == nil {
+		s.TLSConfig = &tls.Config{}
+	}
+	if len(s.TLSConfig.NextProtos) == 0 {
+		s.TLSConfig.NextProtos = []string{"h2", "http/1.1"}
 	}
 
 	// clone tls config
-	var config *tls.Config
-	if s.TLSConfig != nil {
-		config = s.TLSConfig.Clone()
-	} else {
-		config = &tls.Config{}
-	}
+	config := s.TLSConfig.Clone()
 
 	configHasCert := len(config.Certificates) > 0 || config.GetCertificate != nil || config.GetConfigForClient != nil
 	if !configHasCert || certFile != "" || keyFile != "" {
