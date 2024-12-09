@@ -14,7 +14,7 @@ var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS ser
 
 type conn struct {
 	net.Conn
-	tc  *tls.Conn
+	tc  *tls.Conn // reading tls if nil
 	srv *Server
 }
 
@@ -52,7 +52,7 @@ func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
 
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if err != nil || n <= 0 {
+	if c.tc == nil || err != nil || n <= 0 {
 		return n, err
 	}
 
@@ -60,6 +60,7 @@ func (c *conn) Read(b []byte) (int, error) {
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
 		c.setRawConn()
+		c.tc = nil
 		return n, nil
 	}
 
