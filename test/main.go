@@ -23,7 +23,7 @@ func main() {
 		Handler:           http.HandlerFunc(httpResponseHandle),
 		ReadHeaderTimeout: time.Minute,
 	})
-	srv.HttpOnHttpsPortErrorHandler = srv.Handler
+	// srv.HttpOnHttpsPortErrorHandler = srv.Handler
 	// Then just use it like http.Server .
 
 	fmt.Println("IsShuttingDown:", srv.IsShuttingDown())
@@ -46,7 +46,7 @@ func main() {
 }
 
 func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
-	w.Header().Del("Connection")
+	// w.Header().Del("Connection")
 	if r.URL.Path == "/" {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(200)
