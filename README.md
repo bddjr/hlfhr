@@ -109,6 +109,13 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 	io.WriteString(w, "<script>location.protocol='https:'</script>")
 })
 ```
+```go
+// Keep Alive
+srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	w.Header().Del("Connection")
+	// Write something...
+})
+```
 
 ---
 
@@ -230,13 +237,14 @@ isShuttingDown := srv.IsShuttingDown()
 
 ```go
 var c net.Conn
+var br *bufio.Reader
 var h http.Handler
 var r *http.Request
 
-w := NewResponse()
+w := NewResponse(c, br)
 
 h.ServeHTTP(w, r)
-err := w.Flush(c)
+err := w.FlushError()
 ```
 
 #### ConnFirstByteLooksLikeHttp
@@ -253,6 +261,23 @@ var c net.Conn
 var b []byte
 n, err := c.Read(b)
 br := hlfhr.NewBufioReaderWithBytes(b, n, c)
+```
+
+#### BufioSetReader
+
+```go
+var r io.Reader
+lr := &io.LimitedReader{R: r, N: 4096}
+// Read header
+br := bufio.NewReader(lr)
+// Read body
+hlfhr.BufioSetReader(br, r)
+```
+
+#### NewFastStringWriter
+```go
+var w io.Writer
+sw := hlfhr.NewFastStringWriter(w)
 ```
 
 ---

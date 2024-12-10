@@ -17,13 +17,10 @@ func (l *TLSListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
-	mc := new(conn)
-	tc := tls.Server(mc, l.TLSConf)
-
-	*mc = conn{
+	mc := &conn{
 		Conn: c,
-		tc:   tc,
 		srv:  l.Server,
 	}
-	return tc, nil
+	mc.tc = tls.Server(mc, l.TLSConf)
+	return mc.tc, nil
 }
