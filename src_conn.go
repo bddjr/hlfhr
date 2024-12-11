@@ -42,10 +42,11 @@ func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
 	}
 	rd.N -= int64(n)
 
-	req, err := http.ReadRequest(NewBufioReaderWithBytes(b, n, rd))
+	br := NewBufioReaderWithBytes(b, n, rd)
+
+	req, err := http.ReadRequest(br)
 	if err == nil {
-		// 8388607 TiB
-		rd.N = int64(^uint64(0) >> 1)
+		BufioSetReader(br, c.Conn)
 	}
 	return req, err
 }
