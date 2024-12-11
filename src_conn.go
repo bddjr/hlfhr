@@ -67,7 +67,6 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	// Looks like HTTP.
 	// len(b) == 576
-	defer c.Conn.Close()
 
 	// Read request
 	r, err := c.readRequest(b, n)
