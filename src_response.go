@@ -17,6 +17,8 @@ import (
 // [http.Hijacker],
 // [io.StringWriter],
 // [io.ByteWriter].
+//
+// Using for struct [http.ResponseController].
 type Response struct {
 	conn   net.Conn
 	status int // Default: 500
@@ -111,10 +113,6 @@ func (r *Response) SetWriteDeadline(t time.Time) error {
 	return r.conn.SetWriteDeadline(t)
 }
 
-func (r *Response) EnableFullDuplex() error {
-	return nil
-}
-
 func (r *Response) ReadFrom(src io.Reader) (int64, error) {
 	r.disableContentLength = true
 	err := r.FlushError()
@@ -124,6 +122,7 @@ func (r *Response) ReadFrom(src io.Reader) (int64, error) {
 	return io.Copy(r.conn, src)
 }
 
+// func (r *Response) EnableFullDuplex() error {}
 // func (r *Response) CloseNotify() <-chan bool {}
 
 func (r *Response) KeepAlive() bool {
