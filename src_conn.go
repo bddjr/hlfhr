@@ -74,16 +74,14 @@ func (c *conn) Read(b []byte) (int, error) {
 		c.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
 		return 0, ErrHttpOnHttpsPort
 	}
-	if r.Host == "" {
-		const err = "missing required Host header"
-		io.WriteString(c.Conn, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"+err)
-		c.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": "+err)
-		return 0, ErrHttpOnHttpsPort
-	}
 
 	// Response
 	w := NewResponse()
-	if c.srv.HttpOnHttpsPortErrorHandler != nil {
+	if r.Host == "" {
+		// missing "Host" header
+		w.WriteHeader(400)
+		w.WriteString("missing required Host header")
+	} else if c.srv.HttpOnHttpsPortErrorHandler != nil {
 		// Handler
 		c.srv.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
 	} else {
