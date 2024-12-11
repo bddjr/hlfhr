@@ -258,6 +258,17 @@ n, err := c.Read(b)
 br := hlfhr.NewBufioReaderWithBytes(b, n, c)
 ```
 
+#### BufioSetReader
+
+```go
+var r io.Reader
+lr := &io.LimitedReader{R: r, N: 4096}
+// Read header
+br := bufio.NewReader(lr)
+// Read body
+hlfhr.BufioSetReader(br, r)
+```
+
 ---
 
 ## Test
