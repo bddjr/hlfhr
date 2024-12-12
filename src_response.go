@@ -20,7 +20,9 @@ type Response struct {
 	header       http.Header
 	lockedHeader http.Header
 	body         []byte
+	flushErr     error
 	close        bool
+	flushed      bool
 }
 
 func NewResponse(c net.Conn, ConnectionHeaderSetClose bool) *Response {
@@ -92,12 +94,16 @@ func (r *Response) Flush() {
 }
 
 func (r *Response) FlushError() error {
+	if r.flushed {
+		return r.flushErr
+	}
+	r.flushed = true
 	r.lockHeader()
 
 	// status
-	_, err := fmt.Fprint(r.conn, "HTTP/1.1 ", r.status, " ", http.StatusText(r.status), "\r\n")
-	if err != nil {
-		return err
+	_, r.flushErr = fmt.Fprint(r.conn, "HTTP/1.1 ", r.status, " ", http.StatusText(r.status), "\r\n")
+	if r.flushErr != nil {
+		return r.flushErr
 	}
 
 	// header
@@ -106,18 +112,19 @@ func (r *Response) FlushError() error {
 	}
 	r.header["Content-Length"] = []string{strconv.Itoa(len(r.body))}
 
-	err = r.header.Write(r.conn)
-	if err == nil {
-		_, err = io.WriteString(r.conn, "\r\n")
+	r.flushErr = r.header.Write(r.conn)
+	if r.flushErr == nil {
+		_, r.flushErr = io.WriteString(r.conn, "\r\n")
 	}
-	if err != nil || len(r.body) == 0 {
-		return err
+	if r.flushErr != nil || len(r.body) == 0 {
+		return r.flushErr
 	}
 
 	// body
-	n, err := r.conn.Write(r.body)
-	if err == nil && n != len(r.body) {
-		return io.ErrShortWrite
+	var n int
+	n, r.flushErr = r.conn.Write(r.body)
+	if r.flushErr == nil && n != len(r.body) {
+		r.flushErr = io.ErrShortWrite
 	}
-	return err
+	return r.flushErr
 }
