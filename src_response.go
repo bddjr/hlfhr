@@ -5,6 +5,7 @@ package hlfhr
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,40 +15,45 @@ import (
 //
 // "Connection" header always set "close".
 type Response struct {
-	status int // Default: 500
-	header http.Header
-	body   []byte
+	conn         net.Conn
+	status       int // Default: 400
+	header       http.Header
+	lockedHeader http.Header
+	body         []byte
+	close        bool
 }
 
-func NewResponse() *Response {
+func NewResponse(c net.Conn, ConnectionHeaderSetClose bool) *Response {
 	return &Response{
+		conn:   c,
+		status: 400,
 		header: http.Header{
 			"Date": []string{time.Now().UTC().Format(http.TimeFormat)},
 		},
+		close: ConnectionHeaderSetClose,
 	}
 }
 
 func (r *Response) Header() http.Header {
-	if r.status == 0 {
-		return r.header
-	}
-	return http.Header{}
+	return r.header
 }
 
 // Set status code and lock header, if header does not locked.
-// If input 0, set 500.
 func (r *Response) WriteHeader(statusCode int) {
-	if r.status == 0 {
-		if statusCode == 0 {
-			r.status = 500
-		} else {
-			r.status = statusCode
-		}
+	if r.lockedHeader == nil {
+		r.status = statusCode
+		r.lockedHeader = r.header.Clone()
+	}
+}
+
+func (r *Response) lockHeader() {
+	if r.lockedHeader == nil {
+		r.lockedHeader = r.header.Clone()
 	}
 }
 
 func (r *Response) Write(b []byte) (int, error) {
-	r.WriteHeader(0)
+	r.lockHeader()
 	if len(b) != 0 {
 		r.body = append(r.body, b...)
 	}
@@ -55,7 +61,7 @@ func (r *Response) Write(b []byte) (int, error) {
 }
 
 func (r *Response) WriteString(s string) (int, error) {
-	r.WriteHeader(0)
+	r.lockHeader()
 	if len(s) != 0 {
 		r.body = append(r.body, s...)
 	}
@@ -63,34 +69,53 @@ func (r *Response) WriteString(s string) (int, error) {
 }
 
 func (r *Response) WriteByte(c byte) error {
-	r.WriteHeader(0)
+	r.lockHeader()
 	r.body = append(r.body, c)
 	return nil
 }
 
+func (r *Response) SetDeadline(t time.Time) error {
+	return r.conn.SetDeadline(t)
+}
+
+func (r *Response) SetReadDeadline(t time.Time) error {
+	return r.conn.SetReadDeadline(t)
+}
+
+func (r *Response) SetWriteDeadline(t time.Time) error {
+	return r.conn.SetWriteDeadline(t)
+}
+
 // Flush flushes buffered data to the client.
-func (r *Response) Flush(w io.Writer) error {
+func (r *Response) Flush() {
+	r.FlushError()
+}
+
+func (r *Response) FlushError() error {
+	r.lockHeader()
+
 	// status
-	r.WriteHeader(0)
-	_, err := fmt.Fprint(w, "HTTP/1.1 ", r.status, " ", http.StatusText(r.status), "\r\n")
+	_, err := fmt.Fprint(r.conn, "HTTP/1.1 ", r.status, " ", http.StatusText(r.status), "\r\n")
 	if err != nil {
 		return err
 	}
 
 	// header
-	r.header.Set("Connection", "close")
-	r.header.Set("Content-Length", strconv.Itoa(len(r.body)))
-	err = r.header.Write(w)
-	if err == nil {
-		_, err = io.WriteString(w, "\r\n")
+	if r.close {
+		r.header["Connection"] = []string{"close"}
 	}
+	r.header["Content-Length"] = []string{strconv.Itoa(len(r.body))}
 
+	err = r.header.Write(r.conn)
+	if err == nil {
+		_, err = io.WriteString(r.conn, "\r\n")
+	}
 	if err != nil || len(r.body) == 0 {
 		return err
 	}
 
 	// body
-	n, err := w.Write(r.body)
+	n, err := r.conn.Write(r.body)
 	if err == nil && n != len(r.body) {
 		return io.ErrShortWrite
 	}

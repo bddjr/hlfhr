@@ -76,7 +76,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	}
 
 	// Response
-	w := NewResponse()
+	w := NewResponse(c.Conn, true)
 	if r.Host == "" {
 		// missing "Host" header
 		w.WriteHeader(400)
@@ -90,7 +90,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	}
 
 	// Write
-	err = w.Flush(c.Conn)
+	err = w.FlushError()
 	if err != nil {
 		c.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
 	}

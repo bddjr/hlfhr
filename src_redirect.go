@@ -4,7 +4,7 @@ import "net/http"
 
 // Redirect without HTTP body.
 func Redirect(w http.ResponseWriter, code int, url string) {
-	w.Header().Set("Location", url)
+	w.Header()["Location"] = []string{url}
 	w.WriteHeader(code)
 }
 

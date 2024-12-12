@@ -236,10 +236,11 @@ var c net.Conn
 var h http.Handler
 var r *http.Request
 
-w := NewResponse()
+w := NewResponse(c, true)
 
 h.ServeHTTP(w, r)
-err := w.Flush(c)
+err := w.FlushError()
+c.Close()
 ```
 
 #### ConnFirstByteLooksLikeHttp
