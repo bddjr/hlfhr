@@ -5,7 +5,7 @@ If client sent an HTTP request to an HTTPS server `port`, returns [302 redirecti
 Related issue: https://github.com/golang/go/issues/49310
 
 > [!IMPORTANT]
-> If you need `http.Hijacker`, please use https://github.com/bddjr/hahosp
+> If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use https://github.com/bddjr/hahosp
 
 ---
 
