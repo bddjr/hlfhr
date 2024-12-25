@@ -108,11 +108,11 @@ func (r *Response) FlushError() error {
 
 	// header
 	if r.close {
-		r.header["Connection"] = []string{"close"}
+		r.lockedHeader["Connection"] = []string{"close"}
 	}
-	r.header["Content-Length"] = []string{strconv.Itoa(len(r.body))}
+	r.lockedHeader["Content-Length"] = []string{strconv.Itoa(len(r.body))}
 
-	r.flushErr = r.header.Write(r.conn)
+	r.flushErr = r.lockedHeader.Write(r.conn)
 	if r.flushErr == nil {
 		_, r.flushErr = io.WriteString(r.conn, "\r\n")
 	}
