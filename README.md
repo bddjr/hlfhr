@@ -2,9 +2,7 @@
 
 If client sent an HTTP request to an HTTPS server **port**, returns [302 redirection](https://developer.mozilla.org/docs/Web/HTTP/Status/302), like [nginx](https://nginx.org)'s ["error_page 497"](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors).
 
----
-
-## Use
+## Setup
 
 ```
 go get github.com/bddjr/hlfhr
@@ -53,7 +51,7 @@ flowchart TD
 
 ---
 
-## HttpOnHttpsPortErrorHandler
+## HttpOnHttpsPortErrorHandler Example
 
 > [!IMPORTANT]
 > If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use [hahosp](https://github.com/bddjr/hahosp)
