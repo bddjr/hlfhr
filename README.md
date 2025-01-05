@@ -1,23 +1,17 @@
 # HTTPS Listener For HTTP Redirect
 
-If client sent an HTTP request to an HTTPS server `port`, returns [302 redirection](https://developer.mozilla.org/docs/Web/HTTP/Status/302), like [nginx](https://nginx.org)'s ["error_page 497"](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors).
-
-Related issue: https://github.com/golang/go/issues/49310
+If client sent an HTTP request to an HTTPS server **port**, returns [302 redirection](https://developer.mozilla.org/docs/Web/HTTP/Status/302), like [nginx](https://nginx.org)'s ["error_page 497"](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors).
 
 > [!IMPORTANT]
-> If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use https://github.com/bddjr/hahosp
+> If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use [hahosp](https://github.com/bddjr/hahosp)
 
 ---
 
-## Get
+## Use
 
 ```
 go get github.com/bddjr/hlfhr
 ```
-
----
-
-## Example
 
 ```go
 // Use hlfhr.New
@@ -38,18 +32,14 @@ flowchart TD
 
 	IsLooksLikeHTTP("First byte looks like HTTP ?")
 
-	Continue(["✅ Continue..."])
+	CancelHijacking(["✅ Cancel hijacking..."])
 
 	ReadRequest("🔍 Read request")
-
-	IsFindHostHeader("Find Host header ?")
 
 	IsHandlerExist("`
 	HttpOnHttpsPort
 	ErrorHandler
-	exist?`")
-
-	400BadRequest{{"❌ 400 Bad Request"}}
+	exist ?`")
 
 	302Redirect{{"🟡 302 Redirect"}}
 
@@ -58,21 +48,11 @@ flowchart TD
 	Close(["❌ Close."])
 
     Read --> IsLooksLikeHTTP
-    IsLooksLikeHTTP -- "🔐false" --> Continue
-    IsLooksLikeHTTP -- "📄true" --> ReadRequest --> IsFindHostHeader
-    IsFindHostHeader -- "⛔false" --> 400BadRequest --> Close
-    IsFindHostHeader -- "✅true" --> IsHandlerExist
+    IsLooksLikeHTTP -- "🔐false" --> CancelHijacking
+    IsLooksLikeHTTP -- "📄true" --> ReadRequest --> IsHandlerExist
 	IsHandlerExist -- "✖false" --> 302Redirect --> Close
 	IsHandlerExist -- "✅true" --> Handler --> Close
 ```
-
-### See
-
-- [curl](curl.md)
-- [src_server.go](src_server.go)
-- [src_tlslistener.go](src_tlslistener.go)
-- [src_conn.go](src_conn.go)
-- [src_conn-looks-like-http.go](src_conn-looks-like-http.go)
 
 ---
 
@@ -277,6 +257,7 @@ hlfhr.BufioSetReader(br, r)
 ```
 git clone https://github.com/bddjr/hlfhr
 cd hlfhr
+chmod +x run.sh
 ./run.sh
 ```
 
@@ -284,27 +265,15 @@ cd hlfhr
 
 ## Reference
 
-https://developer.mozilla.org/docs/Web/HTTP/Session  
-https://developer.mozilla.org/docs/Web/HTTP/Methods  
-https://developer.mozilla.org/docs/Web/HTTP/Redirections  
-https://developer.mozilla.org/docs/Web/HTTP/Status/302  
-https://developer.mozilla.org/docs/Web/HTTP/Status/307  
-https://developer.mozilla.org/docs/Web/HTTP/Headers/Connection
+https://github.com/golang/go/issues/49310  
+https://github.com/golang/go
 
 https://tls12.xargs.org/#client-hello  
 https://tls13.xargs.org/#client-hello
 
+https://developer.mozilla.org/docs/Web/HTTP
+
 https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors
-
-https://github.com/golang/go/issues/49310  
-https://github.com/golang/go/issues/66501
-
-"net/http"  
-"net"  
-"crypto/tls"  
-"reflect"  
-"bufio"  
-"bytes"
 
 ---
 

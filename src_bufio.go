@@ -26,13 +26,15 @@ func NewBufioReaderWithBytes(buf []byte, contentLength int, rd io.Reader) *bufio
 		buf = nb
 	}
 
-	return (*bufio.Reader)(unsafe.Pointer(&bufioreader{
+	br := new(bufio.Reader)
+	*(*bufioreader)(unsafe.Pointer(br)) = bufioreader{
 		buf:          buf,
 		rd:           rd,
 		w:            contentLength,
 		lastByte:     -1,
 		lastRuneSize: -1,
-	}))
+	}
+	return br
 }
 
 func BufioSetReader(br *bufio.Reader, rd io.Reader) {

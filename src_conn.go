@@ -18,12 +18,6 @@ type conn struct {
 	srv *Server
 }
 
-func (c *conn) setRawConn() {
-	(*struct {
-		conn net.Conn
-	})(unsafe.Pointer(c.tc)).conn = c.Conn
-}
-
 func (c *conn) log(v ...any) {
 	if c.srv.ErrorLog != nil {
 		c.srv.ErrorLog.Print(v...)
@@ -60,7 +54,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	if !ConnFirstByteLooksLikeHttp(b[0]) {
 		// Not looks like HTTP.
 		// TLS handshake: 0x16
-		c.setRawConn()
+		(*struct{ conn net.Conn })(unsafe.Pointer(c.tc)).conn = c.Conn
 		c.tc = nil
 		return n, nil
 	}
@@ -78,7 +72,7 @@ func (c *conn) Read(b []byte) (int, error) {
 	// Response
 	w := NewResponse(c.Conn, true)
 	if r.Host == "" {
-		// missing "Host" header
+		// Error: missing HTTP/1.1 required "Host" header
 		w.WriteHeader(400)
 		w.WriteString("missing required Host header")
 	} else if c.srv.HttpOnHttpsPortErrorHandler != nil {

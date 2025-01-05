@@ -55,9 +55,9 @@ func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func testPrint(srv *hlfhr.Server) {
-	fmt.Print("\n  test:\n  ")
+	fmt.Print("\n  test:\n  curl")
 	if runtime.GOOS == "windows" {
-		fmt.Print("cmd /C ")
+		fmt.Print(".exe")
 	}
-	fmt.Print("curl -v -k -L http://localhost", srv.Addr, "/\n\n")
+	fmt.Print(" -v -k -L http://localhost", srv.Addr, "/\n\n")
 }

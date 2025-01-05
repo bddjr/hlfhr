@@ -12,8 +12,6 @@ import (
 )
 
 // Using for interface [http.ResponseWriter], [io.StringWriter], [io.ByteWriter].
-//
-// "Connection" header always set "close".
 type Response struct {
 	conn         net.Conn
 	status       int // Default: 400
