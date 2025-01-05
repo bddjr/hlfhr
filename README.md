@@ -54,7 +54,7 @@ flowchart TD
 
 ## HttpOnHttpsPortErrorHandler Example
 
-If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use [hahosp](https://github.com/bddjr/hahosp).
+> If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use [hahosp](https://github.com/bddjr/hahosp).
 
 ```go
 // 307 Temporary Redirect
