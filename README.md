@@ -14,6 +14,7 @@ srv := hlfhr.New(&http.Server{
 	// Write something...
 })
 // Then just use it like [http.Server]
+
 err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
 ```
 
@@ -53,9 +54,7 @@ flowchart TD
 
 ## HttpOnHttpsPortErrorHandler Example
 
-> [!IMPORTANT]
-> If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use [hahosp](https://github.com/bddjr/hahosp)
-
+If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use [hahosp](https://github.com/bddjr/hahosp).
 
 ```go
 // 307 Temporary Redirect
