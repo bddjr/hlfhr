@@ -1,6 +1,6 @@
 # HTTPS Listener For HTTP Redirect
 
-Implementing redirection from HTTP to HTTPS on the same port, just like [nginx error_page 497](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors).
+Implementing redirection from HTTP to HTTPS on the same port, just like [nginx error_page 497](https://github.com/bddjr/hlfhr/discussions/18).
 
 ## Setup
 
