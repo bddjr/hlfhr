@@ -1,6 +1,6 @@
 # HTTPS Listener For HTTP Redirect
 
-If client sent an HTTP request to an HTTPS server **port**, returns [302 redirection](https://developer.mozilla.org/docs/Web/HTTP/Status/302), like [nginx](https://nginx.org)'s ["error_page 497"](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors).
+Implementing redirection from HTTP to HTTPS on the same port, just like [nginx error_page 497](https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors).
 
 ## Setup
 
@@ -15,8 +15,10 @@ srv := hlfhr.New(&http.Server{
 })
 // Then just use it like [http.Server]
 
-err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
+err := srv.ListenAndServeTLS("example.crt", "example.key")
 ```
+
+For example, if listening on `:8443`, then `http://127.0.0.1:8443` will redirect to `https://127.0.0.1:8443` .
 
 ---
 

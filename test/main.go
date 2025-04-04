@@ -19,7 +19,7 @@ var srv *hlfhr.Server
 func main() {
 	// Use hlfhr.New
 	srv = hlfhr.New(&http.Server{
-		Addr:              ":5678",
+		Addr:              ":8443",
 		Handler:           http.HandlerFunc(httpResponseHandle),
 		ReadHeaderTimeout: time.Minute,
 	})
