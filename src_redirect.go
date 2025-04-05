@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const defaultRedirectStatus = 302
+const defaultRedirectStatus = 307
 
 // Redirect without HTTP body.
 func Redirect(w http.ResponseWriter, code int, url string) {

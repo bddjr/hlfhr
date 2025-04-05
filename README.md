@@ -23,7 +23,7 @@ srv := hlfhr.New(&http.Server{
 err := srv.ListenAndServeTLS("example.crt", "example.key")
 ```
 
-For example, if listening on `:443`, then `http://127.0.0.1:443` will redirect to `https://127.0.0.1:443` .
+For example, if listening on `:443`, then `http://127.0.0.1:443` will using 307 status redirect to `https://127.0.0.1:443` .
 
 ---
 
@@ -62,13 +62,6 @@ flowchart TD
 ## HttpOnHttpsPortErrorHandler Example
 
 > If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use [hahosp](https://github.com/bddjr/hahosp).
-
-```go
-// 307 Temporary Redirect
-srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	hlfhr.RedirectToHttps(w, r, 307)
-})
-```
 
 ```go
 // Check Host Header
