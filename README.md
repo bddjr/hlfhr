@@ -1,6 +1,8 @@
 # HTTPS Listener For HTTP Redirect
 
-Implementing redirection from HTTP to HTTPS on the same port, just like [nginx error_page 497](https://github.com/bddjr/hlfhr/discussions/18).
+Redirecting from HTTP to HTTPS on the same port, similar to [nginx's `error_page 497`](https://github.com/bddjr/hlfhr/discussions/18).
+
+It can also redirect from port 80 to port 443.
 
 ## Setup
 
@@ -24,6 +26,8 @@ err := srv.ListenAndServeTLS("example.crt", "example.key")
 ```
 
 For example, if listening on `:443`, then `http://127.0.0.1:443` will using 307 status redirect to `https://127.0.0.1:443` .
+
+If you need to customize the redirect Handler, see [HttpOnHttpsPortErrorHandler Example](#httponhttpsporterrorhandler-example).
 
 ---
 
