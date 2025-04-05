@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"reflect"
-	"runtime"
 	"strings"
 	"sync/atomic"
 	"unsafe"
@@ -97,13 +96,6 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 						}
 						go func(c net.Conn) {
 							defer c.Close()
-							defer func() {
-								if err := recover(); err != nil && err != http.ErrAbortHandler {
-									buf := make([]byte, 64<<10)
-									buf = buf[:runtime.Stack(buf, false)]
-									s.logf("hlfhr: panic serving %s: %v\n%s", c.RemoteAddr(), err, buf)
-								}
-							}()
 							(&conn{
 								Conn: c,
 								srv:  s,

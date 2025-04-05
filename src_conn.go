@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"runtime"
 	"unsafe"
 )
 
@@ -12,10 +13,6 @@ type conn struct {
 	net.Conn
 	tc  *tls.Conn // reading tls if nil
 	srv *Server
-}
-
-func (c *conn) log(v ...any) {
-	c.srv.log(v...)
 }
 
 func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
@@ -38,10 +35,18 @@ func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
 }
 
 func (c *conn) serve(b []byte, n int) {
+	defer func() {
+		if err := recover(); err != nil && err != http.ErrAbortHandler {
+			buf := make([]byte, 64<<10)
+			buf = buf[:runtime.Stack(buf, false)]
+			c.srv.logf("hlfhr: panic serving %s: %v\n%s", c.RemoteAddr(), err, buf)
+		}
+	}()
+
 	// Read request
 	r, err := c.readRequest(b, n)
 	if err != nil {
-		c.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
+		c.srv.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
 		return
 	}
 
@@ -62,7 +67,7 @@ func (c *conn) serve(b []byte, n int) {
 	// Write
 	err = w.FlushError()
 	if err != nil {
-		c.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
+		c.srv.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
 	}
 }
 
