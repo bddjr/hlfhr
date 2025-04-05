@@ -2,14 +2,11 @@ package hlfhr
 
 import (
 	"crypto/tls"
-	"errors"
 	"io"
 	"net"
 	"net/http"
 	"unsafe"
 )
-
-var ErrHttpOnHttpsPort = errors.New("client sent an HTTP request to an HTTPS server")
 
 type conn struct {
 	net.Conn
@@ -77,7 +74,6 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	if !ConnFirstByteLooksLikeHttp(b[0]) {
 		// Not looks like HTTP.
-		// TLS handshake: 0x16
 		(*struct{ conn net.Conn })(unsafe.Pointer(c.tc)).conn = c.Conn
 		c.tc = nil
 		return n, nil
@@ -86,5 +82,5 @@ func (c *conn) Read(b []byte) (int, error) {
 	// Looks like HTTP.
 	// len(b) == 576
 	c.serve(b, n)
-	return 0, ErrHttpOnHttpsPort
+	panic(http.ErrAbortHandler)
 }
