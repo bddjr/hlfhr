@@ -41,6 +41,7 @@ func main() {
 	srv.Close()
 
 	fmt.Println("IsShuttingDown:", srv.IsShuttingDown())
+	time.Sleep(500 * time.Millisecond)
 }
 
 func httpResponseHandle(w http.ResponseWriter, r *http.Request) {
