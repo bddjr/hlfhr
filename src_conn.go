@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"unsafe"
@@ -19,11 +18,7 @@ type conn struct {
 }
 
 func (c *conn) log(v ...any) {
-	if c.srv.ErrorLog != nil {
-		c.srv.ErrorLog.Print(v...)
-	} else {
-		log.Print(v...)
-	}
+	c.srv.log(v...)
 }
 
 func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
@@ -45,6 +40,35 @@ func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
 	return req, err
 }
 
+func (c *conn) serve(b []byte, n int) {
+	// Read request
+	r, err := c.readRequest(b, n)
+	if err != nil {
+		c.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
+		return
+	}
+
+	// Response
+	w := NewResponse(c.Conn, true)
+	if r.Host == "" {
+		// Error: missing HTTP/1.1 required "Host" header
+		w.WriteHeader(400)
+		w.WriteString("missing required Host header")
+	} else if c.srv.HttpOnHttpsPortErrorHandler != nil {
+		// Handler
+		c.srv.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+	} else {
+		// Redirect
+		RedirectToHttps(w, r, defaultRedirectStatus)
+	}
+
+	// Write
+	err = w.FlushError()
+	if err != nil {
+		c.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
+	}
+}
+
 func (c *conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
 	if c.tc == nil || err != nil || n <= 0 {
@@ -61,32 +85,6 @@ func (c *conn) Read(b []byte) (int, error) {
 
 	// Looks like HTTP.
 	// len(b) == 576
-
-	// Read request
-	r, err := c.readRequest(b, n)
-	if err != nil {
-		c.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
-		return 0, ErrHttpOnHttpsPort
-	}
-
-	// Response
-	w := NewResponse(c.Conn, true)
-	if r.Host == "" {
-		// Error: missing HTTP/1.1 required "Host" header
-		w.WriteHeader(400)
-		w.WriteString("missing required Host header")
-	} else if c.srv.HttpOnHttpsPortErrorHandler != nil {
-		// Handler
-		c.srv.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
-	} else {
-		// Redirect
-		RedirectToHttps(w, r, 302)
-	}
-
-	// Write
-	err = w.FlushError()
-	if err != nil {
-		c.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
-	}
+	c.serve(b, n)
 	return 0, ErrHttpOnHttpsPort
 }

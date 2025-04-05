@@ -17,6 +17,10 @@ type bufioreader struct {
 }
 
 func NewBufioReaderWithBytes(buf []byte, contentLength int, rd io.Reader) *bufio.Reader {
+	if len(buf) == 0 {
+		return bufio.NewReader(rd)
+	}
+
 	// copy from bufio.minReadBufferSize
 	const minReadBufferSize = 16
 

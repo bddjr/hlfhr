@@ -13,12 +13,17 @@ go get github.com/bddjr/hlfhr
 srv := hlfhr.New(&http.Server{
 	// Write something...
 })
-// Then just use it like [http.Server]
 
+// Port 80 redirects to port 443.  
+// This option only takes effect when listening on port 443.
+// If you need it, uncomment the next line.
+// srv.Listen80RedirectTo443 = true
+
+// Then just use it like [http.Server]
 err := srv.ListenAndServeTLS("example.crt", "example.key")
 ```
 
-For example, if listening on `:8443`, then `http://127.0.0.1:8443` will redirect to `https://127.0.0.1:8443` .
+For example, if listening on `:443`, then `http://127.0.0.1:443` will redirect to `https://127.0.0.1:443` .
 
 ---
 

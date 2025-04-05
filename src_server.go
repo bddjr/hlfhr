@@ -5,9 +5,12 @@ package hlfhr
 
 import (
 	"crypto/tls"
+	"log"
 	"net"
 	"net/http"
 	"reflect"
+	"runtime"
+	"strings"
 	"sync/atomic"
 	"unsafe"
 )
@@ -18,6 +21,11 @@ type Server struct {
 	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
 	// See https://github.com/bddjr/hlfhr#httponhttpsporterrorhandler-example
 	HttpOnHttpsPortErrorHandler http.Handler
+
+	// Port 80 redirects to port 443.
+	// This option only takes effect when listening on port 443.
+	// HttpOnHttpsPortErrorHandler is also using on port 80.
+	Listen80RedirectTo443 bool
 }
 
 // New hlfhr Server
@@ -66,6 +74,55 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 		if err != nil {
 			return err
 		}
+	}
+
+	// listen 80
+	closeSignal := make(chan struct{})
+	defer close(closeSignal)
+	if s.Listen80RedirectTo443 && strings.HasPrefix(l.Addr().Network(), "tcp") {
+		func() {
+			addr := l.Addr().String()
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				s.log("hlfhr: listen 80 error: net.SplitHostPort: ", err)
+				return
+			}
+			if port != "443" {
+				return
+			}
+			addr = net.JoinHostPort(host, "80")
+			l80, err := net.Listen(l.Addr().Network(), addr)
+			if err != nil {
+				s.log("hlfhr: listen 80 error: net.Listen: ", err)
+				return
+			}
+			go func() {
+				<-closeSignal
+				l80.Close()
+			}()
+			go func() {
+				for {
+					c, err := l80.Accept()
+					if err != nil {
+						return
+					}
+					go func(c net.Conn) {
+						defer c.Close()
+						defer func() {
+							if err := recover(); err != nil && err != http.ErrAbortHandler {
+								buf := make([]byte, 64<<10)
+								buf = buf[:runtime.Stack(buf, false)]
+								s.logf("hlfhr: panic serving %s: %v\n%s", c.RemoteAddr(), err, buf)
+							}
+						}()
+						(&conn{
+							Conn: c,
+							srv:  s,
+						}).serve(nil, 0)
+					}(c)
+				}
+			}()
+		}()
 	}
 
 	// serve
@@ -147,4 +204,20 @@ func IsHttpServerShuttingDown(srv *http.Server) bool {
 
 func (s *Server) IsShuttingDown() bool {
 	return IsHttpServerShuttingDown(s.Server)
+}
+
+func (s *Server) log(v ...any) {
+	if s.ErrorLog != nil {
+		s.ErrorLog.Print(v...)
+	} else {
+		log.Print(v...)
+	}
+}
+
+func (s *Server) logf(format string, v ...any) {
+	if s.ErrorLog != nil {
+		s.ErrorLog.Printf(format, v...)
+	} else {
+		log.Printf(format, v...)
+	}
 }
