@@ -77,52 +77,42 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 	}
 
 	// listen 80
-	closeSignal := make(chan struct{})
-	defer close(closeSignal)
 	if s.Listen80RedirectTo443 && strings.HasPrefix(l.Addr().Network(), "tcp") {
-		func() {
-			addr := l.Addr().String()
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil {
-				s.log("hlfhr: listen 80 error: net.SplitHostPort: ", err)
-				return
-			}
-			if port != "443" {
-				return
-			}
+		addr := l.Addr().String()
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			s.log("hlfhr: listen 80 error: net.SplitHostPort: ", err)
+		} else if port == "443" {
 			addr = net.JoinHostPort(host, "80")
 			l80, err := net.Listen(l.Addr().Network(), addr)
 			if err != nil {
 				s.log("hlfhr: listen 80 error: net.Listen: ", err)
-				return
-			}
-			go func() {
-				<-closeSignal
-				l80.Close()
-			}()
-			go func() {
-				for {
-					c, err := l80.Accept()
-					if err != nil {
-						return
+			} else {
+				defer l80.Close()
+				go func() {
+					for {
+						c, err := l80.Accept()
+						if err != nil {
+							return
+						}
+						go func(c net.Conn) {
+							defer c.Close()
+							defer func() {
+								if err := recover(); err != nil && err != http.ErrAbortHandler {
+									buf := make([]byte, 64<<10)
+									buf = buf[:runtime.Stack(buf, false)]
+									s.logf("hlfhr: panic serving %s: %v\n%s", c.RemoteAddr(), err, buf)
+								}
+							}()
+							(&conn{
+								Conn: c,
+								srv:  s,
+							}).serve(nil, 0)
+						}(c)
 					}
-					go func(c net.Conn) {
-						defer c.Close()
-						defer func() {
-							if err := recover(); err != nil && err != http.ErrAbortHandler {
-								buf := make([]byte, 64<<10)
-								buf = buf[:runtime.Stack(buf, false)]
-								s.logf("hlfhr: panic serving %s: %v\n%s", c.RemoteAddr(), err, buf)
-							}
-						}()
-						(&conn{
-							Conn: c,
-							srv:  s,
-						}).serve(nil, 0)
-					}(c)
-				}
-			}()
-		}()
+				}()
+			}
+		}
 	}
 
 	// serve
