@@ -44,7 +44,7 @@ flowchart TD
 	ErrorHandler
 	exist ?`")
 
-	302Redirect{{"🟡 302 Redirect"}}
+	Redirect{{"🟡 307 Redirect"}}
 
 	Handler{{"💡 Handler"}}
 
@@ -53,7 +53,7 @@ flowchart TD
     Read --> IsLooksLikeHTTP
     IsLooksLikeHTTP -- "🔐false" --> CancelHijacking
     IsLooksLikeHTTP -- "📄true" --> ReadRequest --> IsHandlerExist
-	IsHandlerExist -- "✖false" --> 302Redirect --> Close
+	IsHandlerExist -- "✖false" --> Redirect --> Close
 	IsHandlerExist -- "✅true" --> Handler --> Close
 ```
 
@@ -76,7 +76,7 @@ srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r
 		w.WriteHeader(421)
 		return
 	}
-	hlfhr.RedirectToHttps(w, r, 302)
+	hlfhr.RedirectToHttps(w, r, 307)
 })
 ```
 
@@ -130,7 +130,7 @@ err := hlfhr.ServeTLS(l, h, "localhost.crt", "localhost.key")
 
 ```go
 var w http.ResponseWriter
-hlfhr.Redirect(w, 302, "https://example.com/")
+hlfhr.Redirect(w, 307, "https://example.com/")
 ```
 
 #### RedirectToHttps
@@ -138,7 +138,7 @@ hlfhr.Redirect(w, 302, "https://example.com/")
 ```go
 var w http.ResponseWriter
 var r *http.Request
-hlfhr.RedirectToHttps(w, r, 302)
+hlfhr.RedirectToHttps(w, r, 307)
 ```
 
 #### SplitHostnamePort
