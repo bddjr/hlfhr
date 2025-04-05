@@ -1,6 +1,6 @@
 # HTTPS Listener For HTTP Redirect
 
-Redirecting from HTTP to HTTPS on the **same port**, similar to [nginx's `error_page 497`](https://github.com/bddjr/hlfhr/discussions/18).
+Redirecting from HTTP to HTTPS on the ***same port***, similar to [nginx's `error_page 497`](https://github.com/bddjr/hlfhr/discussions/18).
 
 It can also redirect from port 80 to port 443.
 
