@@ -25,9 +25,9 @@ srv := hlfhr.New(&http.Server{
 err := srv.ListenAndServeTLS("example.crt", "example.key")
 ```
 
-For example, if listening on `:443`, then `http://127.0.0.1:443` will using 307 status redirect to `https://127.0.0.1:443` .
+For example, if listening on `:443`, then `http://127.0.0.1:443` will respond with a [307 Temporary Redirect](https://developer.mozilla.org/docs/Web/HTTP/Status/307) to `https://127.0.0.1:443`.  
 
-If you need to customize the redirect Handler, see [HttpOnHttpsPortErrorHandler Example](#httponhttpsporterrorhandler-example).
+If you need to customize the redirect handler, see [HttpOnHttpsPortErrorHandler Example](#httponhttpsporterrorhandler-example).
 
 ---
 
