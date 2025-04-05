@@ -26,7 +26,7 @@ func main() {
 
 	fmt.Println("IsShuttingDown:", srv.IsShuttingDown())
 	testPrint(srv)
-	fmt.Println("Press Ctrl+C close server")
+	print("Press Ctrl+C close server\n\n")
 
 	go func() {
 		err := srv.ListenAndServeTLS("localhost.crt", "localhost.key")
@@ -63,14 +63,17 @@ func testPrint(srv *hlfhr.Server) {
 	if runtime.GOOS == "windows" {
 		curl += ".exe"
 	}
-	fmt.Print("\n  test:\n")
-	fmt.Print("  ", curl, " -v -k -L http://127.0.0.1", srv.Addr, "/\n")
-	fmt.Print("  ", curl, " -v -k -L http://[::1]", srv.Addr, "/\n")
+	pl := func(addr string) {
+		println("  " + curl + " -vkL " + addr)
+	}
+	print("\n  test:\n")
+	pl("http://127.0.0.1" + srv.Addr)
+	pl("http://[::1]" + srv.Addr)
 	if srv.Listen80RedirectTo443 {
 		if srv.Addr == "" {
-			fmt.Print("  ", curl, " -v -k -L http://127.0.0.1:443/\n")
-			fmt.Print("  ", curl, " -v -k -L http://[::1]:443/\n")
+			pl("http://127.0.0.1:443")
+			pl("http://[::1]:443")
 		}
 	}
-	fmt.Print("\n")
+	println()
 }
