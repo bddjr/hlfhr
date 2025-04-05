@@ -261,6 +261,10 @@ chmod +x run.sh
 ./run.sh
 ```
 
+Then run the test command printed in the terminal to verify the response content is `Hello hlfhr!`.  
+
+Then access it via browser and use developer tools to confirm the protocol is `h2`.  
+
 ---
 
 ## Reference
