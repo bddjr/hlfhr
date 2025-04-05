@@ -6,8 +6,11 @@ package hlfhr
 //   - https://tls13.xargs.org/#client-hello
 func ConnFirstByteLooksLikeHttp(firstByte byte) bool {
 	switch firstByte {
-	case 0x16:
-		// TLS handshake
+	case 20, // recordTypeChangeCipherSpec
+		21, // recordTypeAlert
+		22, // recordTypeHandshake
+		23: // recordTypeApplicationData
+		// TLS
 		return false
 
 	case 'G', // GET
@@ -17,10 +20,10 @@ func ConnFirstByteLooksLikeHttp(firstByte byte) bool {
 		'D', // DELETE
 		'C', // CONNECT
 		'T': // TRACE
-
+		// HTTP
 		return true
 	}
 
-	// error
+	// unknown
 	return false
 }
