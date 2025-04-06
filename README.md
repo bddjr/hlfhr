@@ -1,8 +1,10 @@
 # HTTPS Listener For HTTP Redirect
 
-Redirecting from HTTP to HTTPS on the ***same port***, similar to [nginx's `error_page 497`](https://github.com/bddjr/hlfhr/discussions/18).
-
+Redirecting from HTTP to HTTPS on the ***same port***, similar to [nginx's `error_page 497`](https://github.com/bddjr/hlfhr/discussions/18).  
 It can also redirect from port 80 to port 443.
+
+> This is my original work - the first solution to [the issue](https://github.com/golang/go/issues/49310) without modifying the standard library.  
+> If you like it, please give me a star⭐. Thanks! 😊  
 
 ## Setup
 
@@ -18,14 +20,15 @@ srv := hlfhr.New(&http.Server{
 
 // Port 80 redirects to port 443.  
 // This option only takes effect when listening on port 443.
-// If you need it, uncomment the next line.
-// srv.Listen80RedirectTo443 = true
+srv.Listen80RedirectTo443 = true
 
 // Then just use it like [http.Server]
 err := srv.ListenAndServeTLS("example.crt", "example.key")
 ```
 
-For example, if listening on `:443`, then `http://127.0.0.1:443` will respond with a [307 Temporary Redirect](https://developer.mozilla.org/docs/Web/HTTP/Status/307) to `https://127.0.0.1:443`.  
+For example:
+- Listening on port 8443, `http://127.0.0.1:8443` will redirect to `https://127.0.0.1:8443`.  
+- Listening on port 443, `http://127.0.0.1` will redirect to `https://127.0.0.1`.  
 
 If you need to customize the redirect handler, see [HttpOnHttpsPortErrorHandler Example](#httponhttpsporterrorhandler-example).
 
