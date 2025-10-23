@@ -1,4 +1,4 @@
-package hlfhr
+package hlfhr_utils
 
 import (
 	"bufio"
@@ -6,7 +6,7 @@ import (
 	"unsafe"
 )
 
-// copy from bufio.Reader
+// Copy from [bufio.Reader]
 type bufioreader struct {
 	buf          []byte
 	rd           io.Reader // reader provided by the client
@@ -20,8 +20,6 @@ func NewBufioReaderWithBytes(buf []byte, contentLength int, rd io.Reader) *bufio
 	if len(buf) == 0 {
 		return bufio.NewReader(rd)
 	}
-
-	// copy from bufio.minReadBufferSize
 	const minReadBufferSize = 16
 
 	if len(buf) < minReadBufferSize {
