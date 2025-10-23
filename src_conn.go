@@ -2,36 +2,72 @@ package hlfhr
 
 import (
 	"crypto/tls"
-	"io"
 	"net"
 	"net/http"
 	"runtime"
+	"sync"
 	"unsafe"
+
+	hlfhr_utils "github.com/bddjr/hlfhr/utils"
 )
+
+type connPoolType struct {
+	p sync.Pool
+}
+
+func (t *connPoolType) get() *conn {
+	return t.p.Get().(*conn)
+}
+
+func (t *connPoolType) Put(x *conn) {
+	t.p.Put(x)
+}
+
+var connPool = connPoolType{
+	sync.Pool{
+		New: func() any {
+			return new(conn)
+		},
+	},
+}
 
 type conn struct {
 	net.Conn
-	tc  *tls.Conn // reading tls if nil
+	tc  *tls.Conn // If nil, it's reading TLS or serving port 80
 	srv *Server
 }
 
-func (c *conn) readRequest(b []byte, n int) (*http.Request, error) {
-	rd := &io.LimitedReader{
-		R: c.Conn,
-		N: http.DefaultMaxHeaderBytes,
+func (c *conn) Read(b []byte) (int, error) {
+	n, err := c.Conn.Read(b)
+	if c.tc == nil || err != nil || n <= 0 {
+		return n, err
 	}
-	if c.srv.MaxHeaderBytes != 0 {
-		rd.N = int64(c.srv.MaxHeaderBytes)
-	}
-	rd.N -= int64(n)
 
-	br := NewBufioReaderWithBytes(b, n, rd)
+	// Does the first byte look like HTTP?
+	switch b[0] {
+	case 22, // recordTypeHandshake
+		20, // recordTypeChangeCipherSpec
+		21, // recordTypeAlert
+		23: // recordTypeApplicationData
+		// TLS
 
-	req, err := http.ReadRequest(br)
-	if err == nil {
-		BufioSetReader(br, c.Conn)
+	case 'G', // GET
+		'H', // HEAD
+		'P', // POST PUT PATCH
+		'D', // DELETE
+		'C', // CONNECT
+		'O', // OPTIONS
+		'T': // TRACE
+		// HTTP
+		// len(b) == 576
+		c.serve(b, n)
+		panic(http.ErrAbortHandler)
 	}
-	return req, err
+
+	// Cancel hijack
+	(*struct{ conn net.Conn })(unsafe.Pointer(c.tc)).conn = c.Conn
+	c.tc = nil
+	return n, nil
 }
 
 func (c *conn) serve(b []byte, n int) {
@@ -44,24 +80,43 @@ func (c *conn) serve(b []byte, n int) {
 	}()
 
 	// Read request
-	r, err := c.readRequest(b, n)
+	limitedReader := hlfhr_utils.NewLimitedReader(c.Conn, http.DefaultMaxHeaderBytes)
+	if c.srv.MaxHeaderBytes != 0 {
+		limitedReader.N = int64(c.srv.MaxHeaderBytes)
+	}
+	limitedReader.N -= int64(n)
+
+	br := hlfhr_utils.NewBufioReaderWithBytes(b, n, limitedReader)
+
+	r, err := http.ReadRequest(br)
+	hlfhr_utils.LimitedReaderPool.Put(limitedReader)
 	if err != nil {
 		c.srv.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
 		return
 	}
+	hlfhr_utils.BufioSetReader(br, c.Conn)
 
 	// Response
-	w := NewResponse(c.Conn, true)
+	w := hlfhr_utils.NewResponse(c.Conn, 400, true)
+
 	if r.Host == "" {
 		// Error: missing HTTP/1.1 required "Host" header
-		w.WriteHeader(400)
+		hlfhr_utils.BufioReaderPool.Put(br)
 		w.WriteString("missing required Host header")
-	} else if c.srv.HttpOnHttpsPortErrorHandler != nil {
+		defer c.putToPool(w)
+	} else if c.srv.HlfhrHandler != nil {
 		// Handler
-		c.srv.HttpOnHttpsPortErrorHandler.ServeHTTP(w, r)
+		c.srv.HlfhrHandler.ServeHTTP(w, r)
 	} else {
 		// Redirect
-		RedirectToHttps(w, r, defaultRedirectStatus)
+		hlfhr_utils.BufioReaderPool.Put(br)
+		if c.tc != nil {
+			hlfhr_utils.RedirectToHttps_ForceSamePort(w, r, 307)
+		} else {
+			// Listen80RedirectTo443
+			hlfhr_utils.RedirectToHttps(w, r, 307)
+		}
+		defer c.putToPool(w)
 	}
 
 	// Write
@@ -71,21 +126,7 @@ func (c *conn) serve(b []byte, n int) {
 	}
 }
 
-func (c *conn) Read(b []byte) (int, error) {
-	n, err := c.Conn.Read(b)
-	if c.tc == nil || err != nil || n <= 0 {
-		return n, err
-	}
-
-	if !ConnFirstByteLooksLikeHttp(b[0]) {
-		// Not looks like HTTP.
-		(*struct{ conn net.Conn })(unsafe.Pointer(c.tc)).conn = c.Conn
-		c.tc = nil
-		return n, nil
-	}
-
-	// Looks like HTTP.
-	// len(b) == 576
-	c.serve(b, n)
-	panic(http.ErrAbortHandler)
+func (c *conn) putToPool(w *hlfhr_utils.Response) {
+	hlfhr_utils.ResponsePool.Put(w)
+	connPool.Put(c)
 }

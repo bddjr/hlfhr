@@ -1,10 +1,31 @@
-package hlfhr
+package hlfhr_utils
 
 import (
 	"bufio"
 	"io"
+	"sync"
 	"unsafe"
 )
+
+type bufioReaderPoolType struct {
+	p sync.Pool
+}
+
+func (t *bufioReaderPoolType) get() *bufio.Reader {
+	return t.p.Get().(*bufio.Reader)
+}
+
+func (t *bufioReaderPoolType) Put(x *bufio.Reader) {
+	t.p.Put(x)
+}
+
+var BufioReaderPool = bufioReaderPoolType{
+	sync.Pool{
+		New: func() any {
+			return new(bufio.Reader)
+		},
+	},
+}
 
 // copy from bufio.Reader
 type bufioreader struct {
@@ -17,20 +38,18 @@ type bufioreader struct {
 }
 
 func NewBufioReaderWithBytes(buf []byte, contentLength int, rd io.Reader) *bufio.Reader {
-	if len(buf) == 0 {
-		return bufio.NewReader(rd)
-	}
-
-	// copy from bufio.minReadBufferSize
+	const defaultBufSize = 4096
 	const minReadBufferSize = 16
 
-	if len(buf) < minReadBufferSize {
+	if len(buf) == 0 {
+		buf = make([]byte, defaultBufSize)
+	} else if len(buf) < minReadBufferSize {
 		nb := make([]byte, minReadBufferSize)
 		copy(nb, buf)
 		buf = nb
 	}
 
-	br := new(bufio.Reader)
+	br := BufioReaderPool.get()
 	*(*bufioreader)(unsafe.Pointer(br)) = bufioreader{
 		buf:          buf,
 		rd:           rd,

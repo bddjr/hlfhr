@@ -1,4 +1,4 @@
-package hlfhr
+package hlfhr_utils
 
 // v1.2.3 not use [http.Response]
 
@@ -8,13 +8,34 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
-// Using for interface [http.ResponseWriter], [io.StringWriter], [io.ByteWriter].
+type responsePoolType struct {
+	p sync.Pool
+}
+
+func (t *responsePoolType) get() *Response {
+	return t.p.Get().(*Response)
+}
+
+func (t *responsePoolType) Put(x *Response) {
+	t.p.Put(x)
+}
+
+var ResponsePool = responsePoolType{
+	sync.Pool{
+		New: func() any {
+			return new(Response)
+		},
+	},
+}
+
+// Using for interface [http.ResponseWriter], [io.StringWriter] and [io.ByteWriter].
 type Response struct {
 	conn         net.Conn
-	status       int // Default: 400
+	status       int
 	header       http.Header
 	lockedHeader http.Header
 	body         []byte
@@ -23,15 +44,24 @@ type Response struct {
 	flushed      bool
 }
 
-func NewResponse(c net.Conn, ConnectionHeaderSetClose bool) *Response {
-	return &Response{
+func NewResponse(c net.Conn, status int, closeConnection bool) *Response {
+	return ResponsePool.get().Reset(c, status, closeConnection)
+}
+
+func (r *Response) Reset(c net.Conn, status int, closeConnection bool) *Response {
+	*r = Response{
 		conn:   c,
-		status: 400,
+		status: status,
 		header: http.Header{
 			"Date": []string{time.Now().UTC().Format(http.TimeFormat)},
 		},
-		close: ConnectionHeaderSetClose,
+		lockedHeader: nil,
+		body:         []byte{},
+		flushErr:     nil,
+		close:        closeConnection,
+		flushed:      false,
 	}
+	return r
 }
 
 func (r *Response) Header() http.Header {
@@ -111,14 +141,18 @@ func (r *Response) FlushError() error {
 	r.lockedHeader["Content-Length"] = []string{strconv.Itoa(len(r.body))}
 
 	r.flushErr = r.lockedHeader.Write(r.conn)
-	if r.flushErr == nil {
-		_, r.flushErr = io.WriteString(r.conn, "\r\n")
+	if r.flushErr != nil {
+		return r.flushErr
 	}
-	if r.flushErr != nil || len(r.body) == 0 {
+	_, r.flushErr = io.WriteString(r.conn, "\r\n")
+	if r.flushErr != nil {
 		return r.flushErr
 	}
 
 	// body
+	if len(r.body) == 0 {
+		return nil
+	}
 	var n int
 	n, r.flushErr = r.conn.Write(r.body)
 	if r.flushErr == nil && n != len(r.body) {

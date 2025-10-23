@@ -30,7 +30,7 @@ For example:
 - Listening on port 8443, `http://127.0.0.1:8443` will redirect to `https://127.0.0.1:8443`.  
 - Listening on port 443, `http://127.0.0.1` will redirect to `https://127.0.0.1`.  
 
-If you need to customize the redirect handler, see [HttpOnHttpsPortErrorHandler Example](#httponhttpsporterrorhandler-example).
+If you need to customize the redirect handler, see [HlfhrHandler Example](#HlfhrHandler-example).
 
 ---
 
@@ -66,30 +66,36 @@ flowchart TD
 
 ---
 
-## HttpOnHttpsPortErrorHandler Example
+## HlfhrHandler Example
 
 > If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use [hahosp](https://github.com/bddjr/hahosp).
 
 ```go
 // Check Host Header
-srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	hostname, port := hlfhr.SplitHostnamePort(r.Host)
+srv.HlfhrHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	hostname, _port := r.Host, ""
+	if !strings.HasSuffix(hostname, "]") {
+		if i := strings.LastIndexByte(hostname, ':'); i != -1 {
+			_port = hostname[i:]
+			hostname = hostname[:i]
+		}
+	}
 	switch hostname {
 	case "localhost":
 		//
 	case "www.localhost", "127.0.0.1":
-		r.Host = hlfhr.HostnameAppendPort("localhost", port)
+		r.Host = "localhost" + _port
 	default:
 		w.WriteHeader(421)
 		return
 	}
-	hlfhr.RedirectToHttps(w, r, 307)
+	hlfhr_utils.RedirectToHttps(w, r, 307)
 })
 ```
 
 ```go
 // Script Redirect
-srv.HttpOnHttpsPortErrorHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+srv.HlfhrHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(300)
 	io.WriteString(w, "<script>location.protocol='https:'</script>")

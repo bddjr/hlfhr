@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
 cd $(dirname $0)
-cd test
+cd testdata
 go build -trimpath -ldflags "-w -s"
 ./test
