@@ -5,25 +5,24 @@ package hlfhr
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
-	"reflect"
 	"strings"
-	"sync/atomic"
-	"unsafe"
+
+	hlfhr_utils "github.com/bddjr/hlfhr/utils"
 )
 
 type Server struct {
 	*http.Server
 
-	// HttpOnHttpsPortErrorHandler handles HTTP requests sent to an HTTPS port.
-	// See https://github.com/bddjr/hlfhr#httponhttpsporterrorhandler-example
-	HttpOnHttpsPortErrorHandler http.Handler
+	// Handles HTTP requests sent to an HTTPS server.
+	HlfhrHandler http.Handler
 
 	// Port 80 redirects to port 443.
 	// This option only takes effect when listening on port 443.
-	// HttpOnHttpsPortErrorHandler is also using on port 80.
+	// HlfhrHandler is also using on port 80.
 	Listen80RedirectTo443 bool
 }
 
@@ -80,12 +79,12 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 		addr := l.Addr().String()
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {
-			s.log("hlfhr: listen 80 error: net.SplitHostPort: ", err)
+			return fmt.Errorf("hlfhr: Listen80RedirectTo443 error: net.SplitHostPort: %v", err)
 		} else if port == "443" {
 			addr = net.JoinHostPort(host, "80")
 			l80, err := net.Listen(l.Addr().Network(), addr)
 			if err != nil {
-				s.log("hlfhr: listen 80 error: net.Listen: ", err)
+				return fmt.Errorf("hlfhr: Listen80RedirectTo443 error: net.Listen: %v", err)
 			} else {
 				defer l80.Close()
 				go func() {
@@ -98,6 +97,7 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 							defer c.Close()
 							(&conn{
 								Conn: c,
+								tc:   nil,
 								srv:  s,
 							}).serve(nil, 0)
 						}(c)
@@ -149,7 +149,7 @@ func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) er
 // ListenAndServeTLS always returns a non-nil error. After [Server.Shutdown] or
 // [Server.Close], the returned error is [http.ErrServerClosed].
 func (s *Server) ListenAndServeTLS(certFile string, keyFile string) error {
-	if s.IsShuttingDown() {
+	if hlfhr_utils.IsShuttingDown(s.Server) {
 		return http.ErrServerClosed
 	}
 	addr := s.Addr
@@ -176,16 +176,6 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 		Addr:    addr,
 		Handler: handler,
 	}).ListenAndServeTLS(certFile, keyFile)
-}
-
-func IsHttpServerShuttingDown(srv *http.Server) bool {
-	// Get private value
-	inShutdown := (*atomic.Bool)(unsafe.Pointer(reflect.ValueOf(srv).Elem().FieldByName("inShutdown").UnsafeAddr()))
-	return inShutdown.Load()
-}
-
-func (s *Server) IsShuttingDown() bool {
-	return IsHttpServerShuttingDown(s.Server)
 }
 
 func (s *Server) log(v ...any) {
