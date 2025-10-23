@@ -46,9 +46,7 @@ flowchart TD
 
 	ReadRequest("🔍 Read request")
 
-	IsHandlerExist("`
-	HlfhrHandler
-	exist ?`")
+	IsHandlerExist("HlfhrHandler exist ?")
 
 	Redirect{{"🟡 307 Redirect"}}
 

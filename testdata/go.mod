@@ -1,8 +1,6 @@
 module testdata/main
 
-go 1.24.0
-
-toolchain go1.24.2
+go 1.21
 
 replace github.com/bddjr/hlfhr => ../
 
