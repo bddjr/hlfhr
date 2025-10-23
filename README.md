@@ -98,8 +98,8 @@ srv.HlfhrHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 git clone https://github.com/bddjr/hlfhr
 cd hlfhr
 cd testdata
-go test
-go run main.go
+sudo go test
+sudo go run main.go
 ```
 
 ---
