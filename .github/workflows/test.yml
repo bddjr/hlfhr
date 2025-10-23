@@ -8,7 +8,7 @@ on:
   - pull_request
 
 jobs:
-  test:
+  test-1-21:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -17,6 +17,23 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: '1.21'
+        check-latest: false
+
+    - name: 
+      run: |
+        cd testdata
+        go test
+
+  test-stable:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: stable
+        check-latest: true
 
     - name: 
       run: |
