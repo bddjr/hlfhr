@@ -30,7 +30,7 @@ For example:
 - Listening on port 8443, `http://127.0.0.1:8443` will redirect to `https://127.0.0.1:8443`.  
 - Listening on port 443, `http://127.0.0.1` will redirect to `https://127.0.0.1`.  
 
-If you need to customize the redirect handler, see [HlfhrHandler Example](#HlfhrHandler-example).
+If you need to customize the redirect handler, see [HlfhrHandler Example](#hlfhrhandler-example).
 
 ---
 
