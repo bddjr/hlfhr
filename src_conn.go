@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"runtime"
 
+	hlfhr_lib "github.com/bddjr/hlfhr/lib"
 	hlfhr_utils "github.com/bddjr/hlfhr/utils"
 )
 
@@ -78,7 +79,7 @@ func (c *Conn) HlfhrServe(b []byte, n int) {
 	hlfhr_utils.BufioSetReader(br, c.Conn)
 
 	// Response
-	w := hlfhr_utils.NewResponse(c.Conn, 400, true)
+	w := hlfhr_lib.NewResponse(c.Conn, 400, true)
 
 	if r.Host == "" {
 		// Error: missing HTTP/1.1 required "Host" header
