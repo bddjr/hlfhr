@@ -11,15 +11,15 @@ import (
 	hlfhr_utils "github.com/bddjr/hlfhr/utils"
 )
 
-type conn struct {
+type Conn struct {
 	net.Conn
-	tc  *tls.Conn // If nil, it's reading TLS or serving port 80
-	srv *Server
+	TLSConn *tls.Conn // If nil, it's reading TLS or serving port 80
+	Server  *Server
 }
 
-func (c *conn) Read(b []byte) (int, error) {
+func (c *Conn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if c.tc == nil || err != nil || n <= 0 {
+	if c.TLSConn == nil || err != nil || n <= 0 {
 		return n, err
 	}
 
@@ -40,22 +40,22 @@ func (c *conn) Read(b []byte) (int, error) {
 		'T': // TRACE
 		// HTTP
 		// len(b) == 576
-		c.serve(b, n)
+		c.HlfhrServe(b, n)
 		panic(http.ErrAbortHandler)
 	}
 
 	// Cancel hijack
-	(*struct{ conn net.Conn })(unsafe.Pointer(c.tc)).conn = c.Conn
-	c.tc = nil
+	(*struct{ conn net.Conn })(unsafe.Pointer(c.TLSConn)).conn = c.Conn
+	c.TLSConn = nil
 	return n, nil
 }
 
-func (c *conn) serve(b []byte, n int) {
+func (c *Conn) HlfhrServe(b []byte, n int) {
 	defer func() {
 		if err := recover(); err != nil && err != http.ErrAbortHandler {
 			buf := make([]byte, 64<<10)
 			buf = buf[:runtime.Stack(buf, false)]
-			c.srv.logf("hlfhr: panic serving %s: %v\n%s", c.RemoteAddr(), err, buf)
+			c.Server.logf("hlfhr: panic serving %s: %v\n%s", c.RemoteAddr(), err, buf)
 		}
 	}()
 
@@ -64,8 +64,8 @@ func (c *conn) serve(b []byte, n int) {
 		R: c.Conn,
 		N: http.DefaultMaxHeaderBytes,
 	}
-	if c.srv.MaxHeaderBytes != 0 {
-		limitedReader.N = int64(c.srv.MaxHeaderBytes)
+	if c.Server.MaxHeaderBytes != 0 {
+		limitedReader.N = int64(c.Server.MaxHeaderBytes)
 	}
 	limitedReader.N -= int64(n)
 
@@ -73,7 +73,7 @@ func (c *conn) serve(b []byte, n int) {
 
 	r, err := http.ReadRequest(br)
 	if err != nil {
-		c.srv.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
+		c.Server.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
 		return
 	}
 	hlfhr_utils.BufioSetReader(br, c.Conn)
@@ -84,12 +84,12 @@ func (c *conn) serve(b []byte, n int) {
 	if r.Host == "" {
 		// Error: missing HTTP/1.1 required "Host" header
 		w.WriteString("missing required Host header")
-	} else if c.srv.HlfhrHandler != nil {
+	} else if c.Server.HlfhrHandler != nil {
 		// Handler
-		c.srv.HlfhrHandler.ServeHTTP(w, r)
+		c.Server.HlfhrHandler.ServeHTTP(w, r)
 	} else {
 		// Redirect
-		if c.tc != nil {
+		if c.TLSConn != nil {
 			hlfhr_utils.RedirectToHttps_ForceSamePort(w, r, 307)
 		} else {
 			// Listen80RedirectTo443
@@ -100,6 +100,6 @@ func (c *conn) serve(b []byte, n int) {
 	// Write
 	err = w.FlushError()
 	if err != nil {
-		c.srv.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
+		c.Server.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
 	}
 }
