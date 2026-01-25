@@ -95,11 +95,11 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 						}
 						go func(c net.Conn) {
 							defer c.Close()
-							(&conn{
-								Conn: c,
-								tc:   nil,
-								srv:  s,
-							}).serve(nil, 0)
+							(&Conn{
+								Conn:    c,
+								TLSConn: nil,
+								Server:  s,
+							}).HlfhrServe(nil, 0)
 						}(c)
 					}
 				}()

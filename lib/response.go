@@ -1,4 +1,4 @@
-package hlfhr_utils
+package hlfhr_lib
 
 // v1.2.3 not use [http.Response]
 
