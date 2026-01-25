@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"runtime"
-	"unsafe"
 
 	hlfhr_utils "github.com/bddjr/hlfhr/utils"
 )
@@ -45,7 +44,7 @@ func (c *Conn) Read(b []byte) (int, error) {
 	}
 
 	// Cancel hijack
-	(*struct{ conn net.Conn })(unsafe.Pointer(c.TLSConn)).conn = c.Conn
+	hlfhr_utils.TLSConnSetConn(c.TLSConn, c.Conn)
 	c.TLSConn = nil
 	return n, nil
 }
