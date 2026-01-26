@@ -50,12 +50,19 @@ func NewServer(s *http.Server) *Server {
 // certFile should be the concatenation of the server's certificate,
 // any intermediates, and the CA's certificate.
 //
-// ServeTLS always returns a non-nil error. After [Server.Shutdown] or [Server.Close], the
+// If Listen80RedirectTo443 failed, the returned error is starts with
+// "hlfhr: Listen80RedirectTo443 error: ".
+//
+// After [Server.Shutdown] or [Server.Close], the
 // returned error is [http.ErrServerClosed].
 func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
+	if s.Server == nil {
+		s.Server = new(http.Server)
+	}
+
 	// Setup HTTP/2
 	if s.TLSConfig == nil {
-		s.TLSConfig = &tls.Config{}
+		s.TLSConfig = new(tls.Config)
 	}
 	if len(s.TLSConfig.NextProtos) == 0 {
 		s.TLSConfig.NextProtos = []string{"h2", "http/1.1"}
@@ -80,30 +87,30 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {
 			return fmt.Errorf("hlfhr: Listen80RedirectTo443 error: net.SplitHostPort: %v", err)
-		} else if port == "443" {
+		}
+		if port == "443" {
 			addr = net.JoinHostPort(host, "80")
 			l80, err := net.Listen(l.Addr().Network(), addr)
 			if err != nil {
 				return fmt.Errorf("hlfhr: Listen80RedirectTo443 error: net.Listen: %v", err)
-			} else {
-				defer l80.Close()
-				go func() {
-					for {
-						c, err := l80.Accept()
-						if err != nil {
-							return
-						}
-						go func(c net.Conn) {
-							defer c.Close()
-							(&Conn{
-								Conn:    c,
-								TLSConn: nil,
-								Server:  s,
-							}).HlfhrServe(nil, 0)
-						}(c)
-					}
-				}()
 			}
+			defer l80.Close()
+			go func() {
+				for {
+					c, err := l80.Accept()
+					if err != nil {
+						return
+					}
+					go func(c net.Conn) {
+						defer c.Close()
+						(&Conn{
+							Conn:    c,
+							TLSConn: nil,
+							Server:  s,
+						}).HlfhrServe(nil, 0)
+					}(c)
+				}
+			}()
 		}
 	}
 
@@ -126,7 +133,8 @@ func (s *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error
 // certificate authority, the certFile should be the concatenation
 // of the server's certificate, any intermediates, and the CA's certificate.
 //
-// ServeTLS always returns a non-nil error.
+// If Listen80RedirectTo443 failed, the returned error is starts with
+// "hlfhr: Listen80RedirectTo443 error: ".
 func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) error {
 	return New(&http.Server{
 		Handler: handler,
@@ -146,10 +154,15 @@ func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) er
 //
 // If srv.Addr is blank, ":https" is used.
 //
-// ListenAndServeTLS always returns a non-nil error. After [Server.Shutdown] or
+// If Listen80RedirectTo443 failed, the returned error is starts with
+// "hlfhr: Listen80RedirectTo443 error: ".
+//
+// After [Server.Shutdown] or
 // [Server.Close], the returned error is [http.ErrServerClosed].
 func (s *Server) ListenAndServeTLS(certFile string, keyFile string) error {
-	if hlfhr_utils.IsShuttingDown(s.Server) {
+	if s.Server == nil {
+		s.Server = new(http.Server)
+	} else if hlfhr_utils.IsShuttingDown(s.Server) {
 		return http.ErrServerClosed
 	}
 	addr := s.Addr
@@ -171,6 +184,9 @@ func (s *Server) ListenAndServeTLS(certFile string, keyFile string) error {
 // matching private key for the server must be provided. If the certificate
 // is signed by a certificate authority, the certFile should be the concatenation
 // of the server's certificate, any intermediates, and the CA's certificate.
+//
+// If Listen80RedirectTo443 failed, the returned error is starts with
+// "hlfhr: Listen80RedirectTo443 error: ".
 func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) error {
 	return New(&http.Server{
 		Addr:    addr,
