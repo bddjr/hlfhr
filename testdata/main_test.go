@@ -121,8 +121,7 @@ func requestTestHlfhrHandler(serverAddr string) {
 		Transport: transport,
 		Timeout:   time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			println("Redirect")
-			return nil
+			panic("Redirect")
 		},
 	}
 	defer client.CloseIdleConnections()
