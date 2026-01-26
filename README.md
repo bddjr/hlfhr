@@ -20,6 +20,7 @@ srv := hlfhr.New(&http.Server{
 
 // Port 80 redirects to port 443.  
 // This option only takes effect when listening on port 443.
+// [hlfhr.Server.HlfhrHandler] is also using on port 80.
 srv.Listen80RedirectTo443 = true
 
 // Then just use it like [http.Server]
