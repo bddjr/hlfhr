@@ -18,11 +18,16 @@ type Server struct {
 	*http.Server
 
 	// Handles HTTP requests sent to an HTTPS server.
+	//
+	// If you need [http.Hijacker] or [http.ResponseController.EnableFullDuplex],
+	// please use https://github.com/bddjr/hahosp.
 	HlfhrHandler http.Handler
 
 	// Port 80 redirects to port 443.
+	//
 	// This option only takes effect when listening on port 443.
-	// HlfhrHandler is also using on port 80.
+	//
+	// [Server.HlfhrHandler] is also using on port 80.
 	Listen80RedirectTo443 bool
 }
 
