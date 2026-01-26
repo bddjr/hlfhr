@@ -126,4 +126,4 @@ https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors
 
 ## License
 
-[BSD-3-clause](LICENSE.txt), Same as Golang.
+[BSD-3-clause](LICENSE.txt), like Golang.
