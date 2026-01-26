@@ -4,16 +4,16 @@ Redirecting from HTTP to HTTPS on the ***same port***, similar to [nginx's `erro
 It can also redirect from port 80 to port 443.
 
 > This is my original work - the first solution to [the issue](https://github.com/golang/go/issues/49310) without modifying the standard library.  
-> If you like it, please give me a star⭐. Thanks! 😊  
+> If you like it, please give me a `⭐star`. Thanks! 😊  
 
 ## Setup
 
 ```
-go get github.com/bddjr/hlfhr
+go get -u github.com/bddjr/hlfhr
 ```
 
 ```go
-// Use hlfhr.New
+// Use [hlfhr.New]
 srv := hlfhr.New(&http.Server{
 	// Write something...
 })
@@ -99,8 +99,8 @@ Linux:
 git clone https://github.com/bddjr/hlfhr
 cd hlfhr
 cd testdata
-sudo go test
-sudo go run main.go
+sudo -E env PATH=$PATH go test
+sudo -E env PATH=$PATH go run main.go
 ```
 
 Windows:
