@@ -1,10 +1,9 @@
 # HTTPS Listener For HTTP Redirect
 
-Redirecting from HTTP to HTTPS on the ***same port***, similar to [nginx's `error_page 497`](https://github.com/bddjr/hlfhr/discussions/18).  
+🌐 HTTP redirect to HTTPS on the **same port** using Golang.  
 It can also redirect from port 80 to port 443.
 
 > This is my original work - the first solution to [the issue](https://github.com/golang/go/issues/49310) without modifying the standard library.  
-> If you like it, please give me a `⭐star`. Thanks! 😊  
 
 ## Setup
 
@@ -127,4 +126,4 @@ https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors
 
 ## License
 
-[BSD-3-clause](LICENSE.txt), like Golang.
+[BSD-3-clause](LICENSE.txt) , like Golang.
