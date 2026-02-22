@@ -8,7 +8,7 @@ on:
   - pull_request
 
 jobs:
-  test-1-21:
+  test-1_17:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -16,11 +16,12 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.17'
         check-latest: true
 
     - name: test
-      run: cd testdata && sudo go test
+      working-directory: testdata
+      run: sudo go test
 
   test-stable:
     runs-on: ubuntu-latest
@@ -34,4 +35,7 @@ jobs:
         check-latest: true
 
     - name: test
-      run: cd testdata && sudo go test
+      working-directory: testdata
+      run: |
+        go get golang.org/x/net@latest
+        sudo go test

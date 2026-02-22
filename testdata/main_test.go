@@ -160,7 +160,7 @@ func test1(serverAddr string) {
 			enc := json.NewEncoder(w)
 			enc.SetEscapeHTML(false)
 			tlsVersion, _ := strings.CutPrefix(tls.VersionName(r.TLS.Version), "TLS ")
-			err := enc.Encode(map[string]any{
+			err := enc.Encode(map[string]interface{}{
 				"Method":         r.Method,
 				"Proto":          r.Proto,
 				"TLS_Version":    tlsVersion,
@@ -204,7 +204,7 @@ func test1(serverAddr string) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		enc := json.NewEncoder(w)
 		enc.SetEscapeHTML(false)
-		err := enc.Encode(map[string]any{
+		err := enc.Encode(map[string]interface{}{
 			"Method": r.Method,
 			"Proto":  r.Proto,
 			"IsTLS":  r.TLS != nil,
