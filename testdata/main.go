@@ -20,7 +20,7 @@ func main() {
 			enc.SetEscapeHTML(false)
 			enc.SetIndent("", "  ")
 			tlsVersion, _ := strings.CutPrefix(tls.VersionName(r.TLS.Version), "TLS ")
-			err := enc.Encode(map[string]any{
+			err := enc.Encode(map[string]interface{}{
 				"Proto":          r.Proto,
 				"TLS_Version":    tlsVersion,
 				"TLS_ServerName": r.TLS.ServerName,
