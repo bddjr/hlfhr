@@ -19,19 +19,27 @@ func RedirectToHttps(w http.ResponseWriter, r *http.Request, code int) {
 
 func RedirectToHttps_ForceSamePort(w http.ResponseWriter, r *http.Request, code int) {
 	host := r.Host
-	if r.TLS == nil { // http:
-		func() {
-			if host[len(host)-1] != ']' {
-				i := len(host) - 2
-				for j := max(i-5, 0); i > j; i-- {
-					if host[i] == ':' {
-						// It has port number.
-						return
-					}
+	if r.TLS == nil {
+		// http:
+		notHasPortNumber := true
+		if host[len(host)-1] != ']' {
+			i := len(host) - 2
+			j := i - 5
+			if j < 0 {
+				j = 0
+			}
+			for ; i > j; i-- {
+				if host[i] == ':' {
+					// It has port number.
+					notHasPortNumber = false
+					break
 				}
 			}
+		}
+		if notHasPortNumber {
 			host += ":80"
-		}()
+		}
+
 	}
 	redirectToHttps(w, r, code, host)
 }
