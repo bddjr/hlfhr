@@ -1,13 +1,27 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/bddjr/hlfhr"
 )
+
+func tlsVersionName(version uint16) string {
+	switch version {
+	case 0x0301:
+		return "1.0"
+	case 0x0302:
+		return "1.1"
+	case 0x0303:
+		return "1.2"
+	case 0x0304:
+		return "1.3"
+	default:
+		return fmt.Sprintf("Unknown 0x%04X", version)
+	}
+}
 
 func main() {
 	println("\n  http://127.0.0.1\n  http://127.0.0.1:443\n  http://localhost:443\n")
@@ -19,10 +33,9 @@ func main() {
 			enc := json.NewEncoder(w)
 			enc.SetEscapeHTML(false)
 			enc.SetIndent("", "  ")
-			tlsVersion, _ := strings.CutPrefix(tls.VersionName(r.TLS.Version), "TLS ")
-			err := enc.Encode(map[string]interface{}{
+			err := enc.Encode(map[string]any{
 				"Proto":          r.Proto,
-				"TLS_Version":    tlsVersion,
+				"TLS_Version":    tlsVersionName(r.TLS.Version),
 				"TLS_ServerName": r.TLS.ServerName,
 				"Host":           r.Host,
 				"URI":            r.RequestURI,

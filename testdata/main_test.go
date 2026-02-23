@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -16,6 +17,21 @@ import (
 	hlfhr_utils "github.com/bddjr/hlfhr/utils"
 	"golang.org/x/net/http2"
 )
+
+func tlsVersionName(version uint16) string {
+	switch version {
+	case 0x0301:
+		return "1.0"
+	case 0x0302:
+		return "1.1"
+	case 0x0303:
+		return "1.2"
+	case 0x0304:
+		return "1.3"
+	default:
+		return fmt.Sprintf("Unknown 0x%04X", version)
+	}
+}
 
 func request(serverAddr string) {
 	println("request")
@@ -159,11 +175,10 @@ func test1(serverAddr string) {
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			enc := json.NewEncoder(w)
 			enc.SetEscapeHTML(false)
-			tlsVersion, _ := strings.CutPrefix(tls.VersionName(r.TLS.Version), "TLS ")
-			err := enc.Encode(map[string]interface{}{
+			err := enc.Encode(map[string]any{
 				"Method":         r.Method,
 				"Proto":          r.Proto,
-				"TLS_Version":    tlsVersion,
+				"TLS_Version":    tlsVersionName(r.TLS.Version),
 				"TLS_ServerName": r.TLS.ServerName,
 				"Host":           r.Host,
 				"URI":            r.RequestURI,
@@ -192,7 +207,7 @@ func test1(serverAddr string) {
 	println()
 
 	request(serverAddr)
-	if addr, b := strings.CutSuffix(serverAddr, ":443"); b {
+	if addr := strings.TrimSuffix(serverAddr, ":443"); addr != serverAddr {
 		addr += ":80"
 		request(addr)
 	}
@@ -204,7 +219,7 @@ func test1(serverAddr string) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		enc := json.NewEncoder(w)
 		enc.SetEscapeHTML(false)
-		err := enc.Encode(map[string]interface{}{
+		err := enc.Encode(map[string]any{
 			"Method": r.Method,
 			"Proto":  r.Proto,
 			"IsTLS":  r.TLS != nil,

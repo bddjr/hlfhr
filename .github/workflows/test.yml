@@ -8,34 +8,41 @@ on:
   - pull_request
 
 jobs:
-  test-1_17:
+  test:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./testdata
+        shell: sudo --preserve-env=PATH bash -e {0}
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.17'
-        check-latest: true
+      - name: Setup Go 1.19
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.19"
+          check-latest: true
+          cache: false
 
-    - name: test
-      working-directory: testdata
-      run: sudo go test
+      - name: Test Go 1.19
+        run: |
+          echo $PATH
+          go version
+          go test
 
-  test-stable:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
+      - name: Setup Go Stable
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          check-latest: true
+          cache: false
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: stable
-        check-latest: true
-
-    - name: test
-      working-directory: testdata
-      run: |
-        go get golang.org/x/net@latest
-        sudo go test
+      - name: Test Go Stable
+        run: |
+          echo $PATH
+          go version
+          go mod edit -go $(go version | grep -Eo [0-9]+\.[0-9]+)
+          go get golang.org/x/net@latest
+          go test
