@@ -99,8 +99,8 @@ Linux:
 git clone https://github.com/bddjr/hlfhr
 cd hlfhr
 cd testdata
-sudo -E env PATH=$PATH go test
-sudo -E env PATH=$PATH go run main.go
+sudo --preserve-env=PATH go test
+sudo --preserve-env=PATH go run main.go
 ```
 
 Windows:
