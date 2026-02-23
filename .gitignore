@@ -1,3 +1,4 @@
 testdata/*.exe
 testdata/main
 testdata/testdata
+.go-pkg
