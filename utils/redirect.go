@@ -13,8 +13,7 @@ func Redirect(w http.ResponseWriter, code int, url string) {
 
 // Redirect without HTTP body.
 func RedirectToHttps(w http.ResponseWriter, r *http.Request, code int) {
-	host, _ := strings.CutSuffix(r.Host, ":80")
-	redirectToHttps(w, r, code, host)
+	redirectToHttps(w, r, code, strings.TrimSuffix(r.Host, ":80"))
 }
 
 func RedirectToHttps_ForceSamePort(w http.ResponseWriter, r *http.Request, code int) {
