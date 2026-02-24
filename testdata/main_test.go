@@ -33,6 +33,25 @@ func tlsVersionName(version uint16) string {
 	}
 }
 
+// Copy from [io.ReadAll] (go1.16)
+func readAll(r io.Reader) ([]byte, error) {
+	b := make([]byte, 0, 512)
+	for {
+		if len(b) == cap(b) {
+			// Add more capacity (let append pick how much).
+			b = append(b, 0)[:len(b)]
+		}
+		n, err := r.Read(b[len(b):cap(b)])
+		b = b[:len(b)+n]
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
+			return b, err
+		}
+	}
+}
+
 func request(serverAddr string) {
 	println("request")
 	// requestBody := make([]byte, 8192)
@@ -95,7 +114,7 @@ func request(serverAddr string) {
 			panic("Response does not using h2 protocol!")
 		}
 		if method != "HEAD" {
-			respBody, err := io.ReadAll(resp.Body)
+			respBody, err := readAll(resp.Body)
 			if err != nil {
 				panic(err)
 			}
@@ -154,7 +173,7 @@ func requestTestHlfhrHandler(serverAddr string) {
 	if err != nil {
 		panic(err)
 	}
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := readAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
@@ -175,7 +194,7 @@ func test1(serverAddr string) {
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			enc := json.NewEncoder(w)
 			enc.SetEscapeHTML(false)
-			err := enc.Encode(map[string]any{
+			err := enc.Encode(map[string]interface{}{
 				"Method":         r.Method,
 				"Proto":          r.Proto,
 				"TLS_Version":    tlsVersionName(r.TLS.Version),
@@ -219,7 +238,7 @@ func test1(serverAddr string) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		enc := json.NewEncoder(w)
 		enc.SetEscapeHTML(false)
-		err := enc.Encode(map[string]any{
+		err := enc.Encode(map[string]interface{}{
 			"Method": r.Method,
 			"Proto":  r.Proto,
 			"IsTLS":  r.TLS != nil,
