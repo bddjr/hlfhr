@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	hlfhr_utils "github.com/bddjr/hlfhr/utils"
 )
 
 // Using for interface [http.ResponseWriter], [io.StringWriter] and [io.ByteWriter].
@@ -46,13 +48,13 @@ func (r *Response) Header() http.Header {
 func (r *Response) WriteHeader(statusCode int) {
 	if r.lockedHeader == nil {
 		r.status = statusCode
-		r.lockedHeader = r.header.Clone()
+		r.lockedHeader = hlfhr_utils.CloneHeader(r.header)
 	}
 }
 
 func (r *Response) lockHeader() {
 	if r.lockedHeader == nil {
-		r.lockedHeader = r.header.Clone()
+		r.lockedHeader = hlfhr_utils.CloneHeader(r.header)
 	}
 }
 

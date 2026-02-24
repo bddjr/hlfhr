@@ -1,6 +1,6 @@
 module c9c38f6b
 
-go 1.13
+go 1.11
 
 replace github.com/bddjr/hlfhr => ../
 
