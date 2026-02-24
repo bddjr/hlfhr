@@ -73,7 +73,7 @@ func request(serverAddr string) {
 			return nil
 		},
 	}
-	defer client.CloseIdleConnections()
+	// defer client.CloseIdleConnections()
 
 	// Intentionally occupy a connection to test whether
 	// the server can handle requests in parallel.
@@ -159,7 +159,7 @@ func requestTestHlfhrHandler(serverAddr string) {
 			panic("Redirect")
 		},
 	}
-	defer client.CloseIdleConnections()
+	// defer client.CloseIdleConnections()
 
 	httpURL := "http://" + serverAddr + "/test?a=b&c=d"
 	println(httpURL)
