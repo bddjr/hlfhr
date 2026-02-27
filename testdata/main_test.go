@@ -52,6 +52,16 @@ func readAll(r io.Reader) ([]byte, error) {
 	}
 }
 
+func closeIdleConnections(client *http.Client) {
+	type canCloseIdleConnections interface {
+		CloseIdleConnections()
+	}
+	var c1 interface{} = client
+	if c2, ok := c1.(canCloseIdleConnections); ok {
+		c2.CloseIdleConnections()
+	}
+}
+
 func request(serverAddr string) {
 	println("request")
 	// requestBody := make([]byte, 8192)
@@ -73,7 +83,7 @@ func request(serverAddr string) {
 			return nil
 		},
 	}
-	// defer client.CloseIdleConnections()
+	defer closeIdleConnections(&client)
 
 	// Intentionally occupy a connection to test whether
 	// the server can handle requests in parallel.
@@ -159,7 +169,7 @@ func requestTestHlfhrHandler(serverAddr string) {
 			panic("Redirect")
 		},
 	}
-	// defer client.CloseIdleConnections()
+	defer closeIdleConnections(&client)
 
 	httpURL := "http://" + serverAddr + "/test?a=b&c=d"
 	println(httpURL)

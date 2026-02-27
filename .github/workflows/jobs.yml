@@ -28,6 +28,28 @@ jobs:
           go version
           go test
 
+  test-1_19:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Go 1.19
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.19"
+          check-latest: true
+          cache: false
+
+      - name: Test Go 1.19
+        working-directory: ./testdata
+        shell: sudo --preserve-env=PATH bash -e {0}
+        run: |
+          go version
+          go mod edit -go 1.19
+          go get -u golang.org/x/net@v0.35.0
+          go test
+
   test-stable:
     runs-on: ubuntu-latest
 
@@ -37,7 +59,7 @@ jobs:
       - name: Setup Go Stable
         uses: actions/setup-go@v6
         with:
-          go-version: stable
+          go-version: "stable"
           check-latest: true
           cache: false
 
@@ -48,12 +70,14 @@ jobs:
           go version
           go mod edit -go $(go version | grep -Eo [0-9]+\.[0-9]+ | head -1)
           go get -u golang.org/x/net@latest
-          go mod tidy
           go test
 
   go-pkg:
     if: github.event_name == 'push' && github.ref_name == 'main'
-    needs: ["test-1_11", "test-stable"]
+    needs:
+      - test-1_11
+      - test-1_19
+      - test-stable
 
     runs-on: ubuntu-latest
 
@@ -79,6 +103,6 @@ jobs:
           git config user.name $GITHUB_ACTOR
           git config user.email $GITHUB_ACTOR@users.noreply.github.com
           git add .
-          git commit -m $BRANCH
+          git commit -m "commit by github actions (https://github.com/$GITHUB_REPOSITORY/actions/runs/${{ github.run_id }})"
           git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
           git push origin $BRANCH -f
