@@ -1,5 +1,5 @@
-//go:build go1.19
-// +build go1.19
+//go:build go1.22
+// +build go1.22
 
 package hlfhr_utils
 
@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"unsafe"
 )
+
+// Can not use go:linkname, see go.dev/issue/67401
 
 // Is [http.Server] shutting down?
 func IsShuttingDown(s *http.Server) bool {

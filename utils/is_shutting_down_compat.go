@@ -1,18 +1,14 @@
-//go:build go1.8 && !go1.19
-// +build go1.8,!go1.19
+//go:build go1.8 && !go1.22
+// +build go1.8,!go1.22
 
 package hlfhr_utils
 
 import (
 	"net/http"
-	"reflect"
-	"sync/atomic"
-	"unsafe"
+	_ "unsafe"
 )
 
 // Is [http.Server] shutting down?
-func IsShuttingDown(s *http.Server) bool {
-	return atomic.LoadInt32((*int32)(unsafe.Pointer(
-		reflect.ValueOf(s).Elem().FieldByName("inShutdown").UnsafeAddr(),
-	))) != 0
-}
+//
+//go:linkname IsShuttingDown net/http.(*Server).shuttingDown
+func IsShuttingDown(*http.Server) bool
