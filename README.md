@@ -8,7 +8,7 @@ It can also redirect from port 80 to port 443.
 ## Setup
 
 ```
-go get -u github.com/bddjr/hlfhr
+go get -u github.com/bddjr/hlfhr@latest
 ```
 
 ```go
@@ -31,6 +31,21 @@ For example:
 - Listening on port 443, `http://127.0.0.1` will redirect to `https://127.0.0.1`.  
 
 If you need to customize the redirect handler, see [HlfhrHandler Example](#hlfhrhandler-example).
+
+---
+
+## VS
+
+`github.com/bddjr/hlfhr` VS [`github.com/bddjr/hahosp`](https://github.com/bddjr/hahosp)
+
+| Feature | hlfhr | hahosp |
+| ---- | ---- | ---- |
+| Redirect to HTTPS without modify `Server.Handler` | ✅ | ❌ Need modify to `hahosp.HandlerSelector` |
+| Listen 80 redirect to 443 | ✅ Need config | ❌ |
+| Without modify `Server.ListenAndServeTLS` | ✅ | ❌ Need modify to `hahosp.ListenAndServe` |
+| Without modify type `http.Server` | ❌ Need modity to `hlfhr.Server` | ✅ |
+| WebSocket on HTTP (not HTTPS) | ❌ Unsupport `http.Hijacker` | ✅ |
+| Keep alive on HTTP (not HTTPS) | ❌ | ✅ |
 
 ---
 
@@ -65,7 +80,14 @@ flowchart TD
 
 ## HlfhrHandler Example
 
-> If you need `http.Hijacker` or `http.ResponseController.EnableFullDuplex`, please use [hahosp](https://github.com/bddjr/hahosp).
+> If you need `http.Hijacker` on HTTP (not HTTPS), please use [github.com/bddjr/hahosp](https://github.com/bddjr/hahosp)
+
+```go
+// 308 Permanent Redirect
+srv.HlfhrHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	hlfhr_utils.RedirectToHttps(w, r, 308)
+})
+```
 
 ```go
 // Check Host Header
@@ -74,56 +96,19 @@ srv.HlfhrHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	if !strings.HasSuffix(hostname, "]") {
 		if i := strings.LastIndexByte(hostname, ':'); i != -1 {
 			_port = hostname[i:]
+			if _port == ":80" {
+				_port = ""
+			}
 			hostname = hostname[:i]
 		}
 	}
 	switch hostname {
 	case "localhost":
-		//
-	case "www.localhost", "127.0.0.1":
-		r.Host = "localhost" + _port
+		hlfhr_utils.RedirectToHttps(w, r, 307)
+	case "www.localhost", "127.0.0.1", "[::1]":
+		hlfhr_utils.RedirectToHttps_ModifyHost(w, r, 307, "localhost"+_port)
 	default:
 		w.WriteHeader(421)
-		return
 	}
-	hlfhr_utils.RedirectToHttps(w, r, 307)
 })
 ```
-
----
-
-## Test
-
-Linux:
-```
-git clone https://github.com/bddjr/hlfhr
-cd hlfhr
-cd testdata
-sudo --preserve-env=PATH go test
-sudo --preserve-env=PATH go run main.go
-```
-
-Windows:
-```
-git clone https://github.com/bddjr/hlfhr
-cd hlfhr
-cd testdata
-go test
-go run main.go
-```
-
----
-
-## Reference
-
-https://github.com/golang/go/issues/49310  
-
-https://developer.mozilla.org/docs/Web/HTTP
-
-https://nginx.org/en/docs/http/ngx_http_ssl_module.html#errors
-
----
-
-## License
-
-[BSD-3-clause](LICENSE.txt) , like Golang.

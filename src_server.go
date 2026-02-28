@@ -1,6 +1,3 @@
-// HTTPS Listener For HTTP Redirect
-//
-// https://github.com/bddjr/hlfhr
 package hlfhr
 
 import (

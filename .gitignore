@@ -1,4 +1,7 @@
+.DS_Store
+
 testdata/*.exe
 testdata/main
 testdata/testdata
+testdata/tester
 .go-pkg

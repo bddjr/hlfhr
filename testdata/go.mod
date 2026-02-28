@@ -1,4 +1,4 @@
-module c9c38f6b
+module tester
 
 go 1.19
 
