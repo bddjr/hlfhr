@@ -42,7 +42,7 @@ If you need to customize the redirect handler, see [HlfhrHandler Example](#hlfhr
 | ---- | ---- | ---- |
 | Redirect to HTTPS without modify `Server.Handler` | ✅ | ❌ Need modify to `hahosp.HandlerSelector` |
 | Listen 80 redirect to 443 | ✅ Need config | ❌ |
-| Without modify `Server.ListenAndServeTLS` | ✅ | ❌ Need modify to `hahosp.ListenAndServe` |
+| Without modify `Server.ListenAndServeTLS` | ✅ | ❌ Need modify to `hahosp.ListenAndServeTLS` |
 | Without modify type `http.Server` | ❌ Need modity to `hlfhr.Server` | ✅ |
 | WebSocket on HTTP (not HTTPS) | ❌ Unsupport `http.Hijacker` | ✅ |
 | Keep alive on HTTP (not HTTPS) | ❌ | ✅ |
