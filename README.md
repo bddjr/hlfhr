@@ -34,7 +34,7 @@ If you need to customize the redirect handler, see [HlfhrHandler Example](#hlfhr
 
 ---
 
-## VS
+## Versus
 
 `github.com/bddjr/hlfhr` VS [`github.com/bddjr/hahosp`](https://github.com/bddjr/hahosp)
 
