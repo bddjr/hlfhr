@@ -10,7 +10,25 @@ import (
 var offset_inShutdown = func() uintptr {
 	sf, ok := reflect.TypeOf(http.Server{}).FieldByName("inShutdown")
 	if !ok {
-		panic("hlfhr_utils: cannot get http.Server.inShutdown offset")
+		panic("hlfhr_utils: failed to get offset of http.Server.inShutdown")
+	}
+	// Automatic type checking
+	const errmsg = "hahosp_utils: failed to check type of http.Server.inShutdown"
+	b := reflect.TypeOf(atomic.Bool{})
+	if sf.Type.Size() != b.Size() {
+		panic(errmsg)
+	}
+	sftk := sf.Type.Kind()
+	if sftk != reflect.Int32 {
+		if sftk != b.Kind() {
+			panic(errmsg)
+		}
+		if sf.Type.PkgPath() != b.PkgPath() {
+			panic(errmsg)
+		}
+		if sf.Type.Name() != b.Name() {
+			panic(errmsg)
+		}
 	}
 	return sf.Offset
 }()
