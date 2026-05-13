@@ -45,36 +45,3 @@ jobs:
           go get -u golang.org/x/net@latest
           go mod tidy
           go test
-
-  go-pkg:
-    if: github.event_name == 'push' && github.ref_name == 'main'
-    needs: ["test-1_13", "test-stable"]
-
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: script
-        env:
-          BRANCH: go-pkg
-          DIR: .go-pkg
-        run: |
-          rm -rf $DIR
-          git init -b $BRANCH $DIR
-          for item in *; do
-              [ -e "$item" ] || continue
-              [ "$item" = "testdata" ] && continue
-              [ "$item" = "TEST.md" ] && continue
-              cp -r "$item" "$DIR/"
-          done
-          cd $DIR
-          git config user.name $GITHUB_ACTOR
-          git config user.email $GITHUB_ACTOR@users.noreply.github.com
-          git add .
-          git commit -m "commit by github actions (https://github.com/$GITHUB_REPOSITORY/actions/runs/${{ github.run_id }})"
-          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
-          git push origin $BRANCH -f
