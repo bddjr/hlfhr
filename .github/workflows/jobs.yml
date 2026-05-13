@@ -14,9 +14,8 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.13"
+          go-version: "1.13.0"
           check-latest: true
-          cache: false
 
       - name: Test
         working-directory: ./testdata
@@ -36,7 +35,6 @@ jobs:
         with:
           go-version: stable
           check-latest: true
-          cache: false
 
       - name: Test Go Stable
         working-directory: ./testdata
