@@ -1,12 +1,9 @@
 module tester
 
-go 1.19
+go 1.13
 
 replace github.com/bddjr/hlfhr => ../
 
-require (
-	github.com/bddjr/hlfhr v0.0.0
-	golang.org/x/net v0.35.0
-)
+require github.com/bddjr/hlfhr v0.0.0
 
-require golang.org/x/text v0.22.0 // indirect
+require golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6

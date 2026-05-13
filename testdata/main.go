@@ -33,7 +33,7 @@ func main() {
 			enc := json.NewEncoder(w)
 			enc.SetEscapeHTML(false)
 			enc.SetIndent("", "  ")
-			err := enc.Encode(map[string]any{
+			err := enc.Encode(map[string]interface{}{
 				"Proto":          r.Proto,
 				"TLS_Version":    tlsVersionName(r.TLS.Version),
 				"TLS_ServerName": r.TLS.ServerName,

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	hlfhr_utils "github.com/bddjr/hlfhr/utils"
+	"github.com/bddjr/shuttingdown"
 )
 
 type Server struct {
@@ -164,7 +164,7 @@ func ServeTLS(l net.Listener, handler http.Handler, certFile, keyFile string) er
 func (s *Server) ListenAndServeTLS(certFile string, keyFile string) error {
 	if s.Server == nil {
 		s.Server = new(http.Server)
-	} else if hlfhr_utils.IsShuttingDown(s.Server) {
+	} else if shuttingdown.IsShuttingDown(s.Server) {
 		return http.ErrServerClosed
 	}
 	addr := s.Addr
@@ -196,7 +196,7 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 	}).ListenAndServeTLS(certFile, keyFile)
 }
 
-func (s *Server) log(v ...any) {
+func (s *Server) log(v ...interface{}) {
 	if s.ErrorLog != nil {
 		s.ErrorLog.Print(v...)
 	} else {
@@ -204,7 +204,7 @@ func (s *Server) log(v ...any) {
 	}
 }
 
-func (s *Server) logf(format string, v ...any) {
+func (s *Server) logf(format string, v ...interface{}) {
 	if s.ErrorLog != nil {
 		s.ErrorLog.Printf(format, v...)
 	} else {
