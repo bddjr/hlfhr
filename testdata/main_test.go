@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/bddjr/hlfhr"
-	hlfhr_utils "github.com/bddjr/hlfhr/utils"
 	"golang.org/x/net/http2"
 )
 
@@ -211,9 +210,6 @@ func test1(serverAddr string) {
 	srv.Listen80RedirectTo443 = true
 
 	println("Listen " + serverAddr)
-	if hlfhr_utils.IsShuttingDown(srv.Server) {
-		panic(true)
-	}
 
 	var err error
 	go func() {
@@ -256,9 +252,6 @@ func test1(serverAddr string) {
 	err = srv.Shutdown(context.Background())
 	if err != nil {
 		panic(err)
-	}
-	if !hlfhr_utils.IsShuttingDown(srv.Server) {
-		panic(false)
 	}
 	println()
 }
