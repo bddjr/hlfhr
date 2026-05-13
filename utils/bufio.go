@@ -19,40 +19,12 @@ type bufio_reader struct {
 
 // Automatic type checking
 var _ = func() (_ struct{}) {
-	const errmsg = "hlfhr_utils: failed to check type bufio_reader"
+	const errmsg = "github.com/bddjr/hlfhr/hlfhr_utils: failed to check type bufio_reader"
 	a := reflect.TypeOf(bufio_reader{})
 	b := reflect.TypeOf(bufio.Reader{})
-	if a.Kind() != b.Kind() {
-		panic(errmsg)
-	}
 	anf := a.NumField()
 	for i := 0; i < anf; i++ {
-		af := a.Field(i)
-		bf := b.Field(i)
-		if af.Offset != bf.Offset {
-			panic(errmsg)
-		}
-		aft := af.Type
-		aftk := aft.Kind()
-		bft := bf.Type
-		if aftk != bft.Kind() {
-			panic(errmsg)
-		}
-		if aftk == reflect.Ptr {
-			aft = af.Type.Elem()
-			aftk = aft.Kind()
-			bft = bf.Type.Elem()
-			if aftk != bft.Kind() {
-				panic(errmsg)
-			}
-		}
-		if aft.Size() != bft.Size() {
-			panic(errmsg)
-		}
-		if aft.PkgPath() != bft.PkgPath() {
-			panic(errmsg)
-		}
-		if aft.Name() != bft.Name() {
+		if a.Field(i).Type != b.Field(i).Type {
 			panic(errmsg)
 		}
 	}

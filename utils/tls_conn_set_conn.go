@@ -13,42 +13,13 @@ type tls_conn_conn struct {
 
 // Automatic type checking
 var _ = func() (_ struct{}) {
-	const errmsg = "hlfhr_utils: failed to check type tls_conn_conn"
+	const errmsg = "github.com/bddjr/hlfhr/hlfhr_utils: failed to check type tls_conn_conn"
 	a := reflect.TypeOf(tls_conn_conn{})
-	b := reflect.TypeOf(tls.Conn{})
-	if a.Kind() != b.Kind() {
+	if a.NumField() != 1 {
 		panic(errmsg)
 	}
-	anf := a.NumField()
-	for i := 0; i < anf; i++ {
-		af := a.Field(i)
-		bf := b.Field(i)
-		if af.Offset != bf.Offset {
-			panic(errmsg)
-		}
-		aft := af.Type
-		aftk := aft.Kind()
-		bft := bf.Type
-		if aftk != bft.Kind() {
-			panic(errmsg)
-		}
-		if aftk == reflect.Ptr {
-			aft = af.Type.Elem()
-			aftk = aft.Kind()
-			bft = bf.Type.Elem()
-			if aftk != bft.Kind() {
-				panic(errmsg)
-			}
-		}
-		if aft.Size() != bft.Size() {
-			panic(errmsg)
-		}
-		if aft.PkgPath() != bft.PkgPath() {
-			panic(errmsg)
-		}
-		if aft.Name() != bft.Name() {
-			panic(errmsg)
-		}
+	if a.Field(0).Type != reflect.TypeOf(tls.Conn{}).Field(0).Type {
+		panic(errmsg)
 	}
 	return
 }()
