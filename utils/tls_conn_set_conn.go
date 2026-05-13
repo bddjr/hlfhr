@@ -32,7 +32,7 @@ var _ = func() (_ struct{}) {
 		if aftk != bft.Kind() {
 			panic(errmsg)
 		}
-		if aftk == reflect.Pointer {
+		if aftk == reflect.Ptr {
 			aft = af.Type.Elem()
 			aftk = aft.Kind()
 			bft = bf.Type.Elem()
