@@ -55,7 +55,7 @@ If you need to customize the redirect handler, see [HlfhrHandler Example](#hlfhr
 flowchart TD
 	Read("Hijacking net.Conn.Read")
 
-	IsUpperCase("First byte is upper case ?")
+	IsUpperCase("Is the first byte uppercase?")
 
 	CancelHijacking(["✅ Cancel hijacking..."])
 
