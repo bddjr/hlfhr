@@ -97,6 +97,7 @@ func request(serverAddr string) {
 		"OPTIONS",
 		"TRACE",
 		"PATCH",
+		"QUERY",
 	} {
 		println(method)
 

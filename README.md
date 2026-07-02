@@ -55,7 +55,7 @@ If you need to customize the redirect handler, see [HlfhrHandler Example](#hlfhr
 flowchart TD
 	Read("Hijacking net.Conn.Read")
 
-	IsLooksLikeHTTP("First byte looks like HTTP ?")
+	IsUpperCase("Is the first byte uppercase?")
 
 	CancelHijacking(["✅ Cancel hijacking..."])
 
@@ -69,9 +69,9 @@ flowchart TD
 
 	Close(["❌ Close."])
 
-    Read --> IsLooksLikeHTTP
-    IsLooksLikeHTTP -- "🔐false" --> CancelHijacking
-    IsLooksLikeHTTP -- "📄true" --> ReadRequest --> IsHandlerExist
+    Read --> IsUpperCase
+    IsUpperCase -- "🔐false" --> CancelHijacking
+    IsUpperCase -- "📄true" --> ReadRequest --> IsHandlerExist
 	IsHandlerExist -- "✖false" --> Redirect --> Close
 	IsHandlerExist -- "✅true" --> Handler --> Close
 ```

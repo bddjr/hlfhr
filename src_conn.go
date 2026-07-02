@@ -23,21 +23,9 @@ func (c *Conn) Read(b []byte) (int, error) {
 		return n, err
 	}
 
-	// Does the first byte look like HTTP?
-	switch b[0] {
-	case 22, // recordTypeHandshake
-		20, // recordTypeChangeCipherSpec
-		21, // recordTypeAlert
-		23: // recordTypeApplicationData
-		// TLS
-
-	case 'G', // GET
-		'H', // HEAD
-		'P', // POST PUT PATCH
-		'D', // DELETE
-		'C', // CONNECT
-		'O', // OPTIONS
-		'T': // TRACE
+	// TLS record types (20-23) < 'A':
+	// skip TLS, serve HTTP (A-Z) and abort via http.ErrAbortHandler.
+	if b[0] >= 'A' && b[0] <= 'Z' {
 		// HTTP
 		// len(b) == 576
 		c.HlfhrServe(b, n)
