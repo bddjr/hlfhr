@@ -61,7 +61,7 @@ func (c *Conn) HlfhrServe(b []byte, n int) {
 
 	r, err := http.ReadRequest(br)
 	if err != nil {
-		c.Server.log("hlfhr: Read request error from ", c.Conn.RemoteAddr(), ": ", err)
+		c.Server.logf("hlfhr: Read request error from %s: %v", c.RemoteAddr(), err)
 		return
 	}
 	hlfhr_utils.BufioSetReader(br, c.Conn)
@@ -88,6 +88,6 @@ func (c *Conn) HlfhrServe(b []byte, n int) {
 	// Write
 	err = w.FlushError()
 	if err != nil {
-		c.Server.log("hlfhr: Write error for ", c.Conn.RemoteAddr(), ": ", err)
+		c.Server.logf("hlfhr: Write error for %s: %v", c.RemoteAddr(), err)
 	}
 }

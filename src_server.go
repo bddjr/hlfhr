@@ -196,14 +196,6 @@ func ListenAndServeTLS(addr, certFile, keyFile string, handler http.Handler) err
 	}).ListenAndServeTLS(certFile, keyFile)
 }
 
-func (s *Server) log(v ...interface{}) {
-	if s.ErrorLog != nil {
-		s.ErrorLog.Print(v...)
-	} else {
-		log.Print(v...)
-	}
-}
-
 func (s *Server) logf(format string, v ...interface{}) {
 	if s.ErrorLog != nil {
 		s.ErrorLog.Printf(format, v...)
