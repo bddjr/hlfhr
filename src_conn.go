@@ -24,7 +24,7 @@ func (c *Conn) Read(b []byte) (int, error) {
 	}
 
 	// TLS record types (20-23) < 'A':
-	// skip TLS, serve HTTP (A-Z) and abort (panic).
+	// skip TLS, serve HTTP (A-Z) and abort via http.ErrAbortHandler.
 	if b[0] >= 'A' && b[0] <= 'Z' {
 		// HTTP
 		// len(b) == 576
