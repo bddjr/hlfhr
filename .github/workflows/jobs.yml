@@ -52,9 +52,11 @@ jobs:
       - name: Get latest Go version (including RC)
         id: get-version
         run: |
-          LATEST=$(curl --compressed -s "https://go.dev/dl/?mode=json&include=all" | jq -r '.[0].version')
-          echo "version=$LATEST" >> $GITHUB_OUTPUT
-          if [[ "$LATEST" =~ rc ]]; then
+          JSON=$(curl --compressed -s "https://go.dev/dl/?mode=json&include=all")
+          VERSION=$(echo "$JSON" | jq -r '.[0].version')
+          STABLE=$(echo "$JSON" | jq -r '.[0].stable')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [ "$STABLE" = "false" ]; then
             echo "is_rc=true" >> $GITHUB_OUTPUT
           else
             echo "is_rc=false" >> $GITHUB_OUTPUT
