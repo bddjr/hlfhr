@@ -75,14 +75,12 @@ func (c *Conn) HlfhrServe(b []byte, n int) {
 	} else if c.Server.HlfhrHandler != nil {
 		// Handler
 		c.Server.HlfhrHandler.ServeHTTP(w, r)
-	} else {
+	} else if c.TLSConn != nil {
 		// Redirect
-		if c.TLSConn != nil {
-			hlfhr_utils.RedirectToHttps_ForceSamePort(w, r, 307)
-		} else {
-			// Listen80RedirectTo443
-			hlfhr_utils.RedirectToHttps(w, r, 307)
-		}
+		hlfhr_utils.RedirectToHttps_ForceSamePort(w, r, 307)
+	} else {
+		// Listen80RedirectTo443
+		hlfhr_utils.RedirectToHttps(w, r, 307)
 	}
 
 	// Write
