@@ -15,10 +15,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.13.0"
-          check-latest: true
 
       - name: Test
-        working-directory: ./testdata
+        working-directory: testdata
         shell: sudo --preserve-env=PATH bash -e {0}
         run: |
           go version
@@ -30,14 +29,51 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Go Stable
+      - name: Setup Go
         uses: actions/setup-go@v6
         with:
           go-version: stable
           check-latest: true
 
-      - name: Test Go Stable
-        working-directory: ./testdata
+      - name: Test
+        working-directory: testdata
+        shell: sudo --preserve-env=PATH bash -e {0}
+        run: |
+          go version
+          go mod edit -go $(go version | grep -Eo [0-9]+\.[0-9]+ | head -1)
+          go get -u golang.org/x/net@latest
+          go mod tidy
+          go test
+
+  test-rc:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get latest Go version (including RC)
+        id: get-version
+        run: |
+          LATEST=$(curl --compressed -s "https://go.dev/dl/?mode=json&include=all" | jq -r '.[0].version')
+          echo "version=$LATEST" >> $GITHUB_OUTPUT
+          if [[ "$LATEST" =~ rc ]]; then
+            echo "is_rc=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_rc=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Go (RC only)
+        if: steps.get-version.outputs.is_rc == 'true'
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ steps.get-version.outputs.version }}
+          go-download-base-url: "https://go.dev/dl"
+
+      - name: Checkout (RC only)
+        uses: actions/checkout@v6
+        if: steps.get-version.outputs.is_rc == 'true'
+
+      - name: Test (RC only)
+        if: steps.get-version.outputs.is_rc == 'true'
+        working-directory: testdata
         shell: sudo --preserve-env=PATH bash -e {0}
         run: |
           go version
