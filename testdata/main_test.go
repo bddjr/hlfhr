@@ -194,11 +194,16 @@ func test1(serverAddr string) {
 			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 			enc := json.NewEncoder(w)
 			enc.SetEscapeHTML(false)
+			var tlsVersion, tlsServerName interface{}
+			if r.TLS != nil {
+				tlsVersion = tlsVersionName(r.TLS.Version)
+				tlsServerName = r.TLS.ServerName
+			}
 			err := enc.Encode(map[string]interface{}{
 				"Method":         r.Method,
 				"Proto":          r.Proto,
-				"TLS_Version":    tlsVersionName(r.TLS.Version),
-				"TLS_ServerName": r.TLS.ServerName,
+				"TLS_Version":    tlsVersion,
+				"TLS_ServerName": tlsServerName,
 				"Host":           r.Host,
 				"URI":            r.RequestURI,
 				// "RequestHeader":  r.Header,
